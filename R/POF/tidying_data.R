@@ -4,7 +4,7 @@
 #
 # [REQUIRES]
 # POF microdata compiled into RDS files following the script "Leitura dos Microdados - R.R"
-# 
+#
 # File by: Felipe Bordini do Amaral
 # Institution: FGV - EESP
 # Project: Master Dissertation
@@ -26,10 +26,10 @@ library(cowplot)
 #-----------------------------------------------------------------------
 
 # Defining POF data path
-dados_path <- "C:/Backup Acer/EESP-Mestrado/Dissertação/POF/2018/Dados_20200403"
+dados_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/2018/Dados_20200403"
 
 # Defining export path for generated files
-export_path <- "C:/Backup Acer/EESP-Mestrado/Dissertação/POF/R Project/Exports"
+export_path <- "D:/Google Drive/Working Cloud//EESP-Mestrado/Dissertação/POF/R Project/Exports"
 
 #-----------------------------------------------------------------------
 #                     READING RDS FILES
@@ -64,7 +64,7 @@ rendimentos_rds <- readRDS(glue("{dados_path}/RENDIMENTO_TRABALHO.rds"))
 # - User-defined categories
 # - User-defined temptation status
 
-cadastro_path <- "C:/Backup Acer/EESP-Mestrado/Dissertação/POF/2018/Documentacao_20200403/Cadastro de Produtos.xls"
+cadastro_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/2018/Documentacao_20200403/Cadastro de Produtos.xls"
 cadastro_produto <- read_xls(cadastro_path, col_types = "text")
 
 temp_cadastro <- cadastro_produto %>% select(V9001,V9000,category,temptation)
@@ -108,7 +108,7 @@ morador_aggr <- morador_rds %>%
   mutate(COD_UPA = str_pad(COD_UPA,9,pad = "0"),
          NUM_DOM = str_pad(NUM_DOM,2,pad = "0"),
          NUM_UC = str_pad(NUM_UC,2,pad = "0"),
-         hh_id = paste0(COD_UPA,NUM_DOM,NUM_UC)) 
+         hh_id = paste0(COD_UPA,NUM_DOM,NUM_UC))
 
 morador_count <- morador_aggr %>%
   group_by(hh_id) %>%
@@ -118,7 +118,7 @@ morador_count <- morador_aggr %>%
 #                     JOINING DATABASES
 #-----------------------------------------------------------------------
 
-cad_select <- caderneta_aggr %>% 
+cad_select <- caderneta_aggr %>%
   select(COD_UPA,NUM_DOM,NUM_UC,V9001,V8000_DEFLA,FATOR_ANUALIZACAO,V9000,category,temptation) %>%
   rename(transaction = V8000_DEFLA)
 col_select <- despesa_col_aggr %>%
@@ -142,7 +142,7 @@ consumption_total <- bind_rows(cad_select,
                                .id = "origin")
 names <- c("caderneta","coletiva","individual","selling","aluguel")
 
-consumption_total <- consumption_total %>% 
+consumption_total <- consumption_total %>%
   mutate(origin = names[as.integer(origin)])
 
 #-----------------------------------------------------------------------
