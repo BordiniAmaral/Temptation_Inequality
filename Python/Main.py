@@ -19,7 +19,7 @@ import numpy as np
 
 import Income_Process
 
-import_path = "C:\Backup Acer\EESP-Mestrado\Dissertação\PNADC\R Project\Transitions by age"
+import_path = "D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação\PNADC\R Project\Transitions by age"
 files = ["average_matrix1.csv", "quantile_frontiers.csv", "quantile_values.csv"]
 
 transition, values = Income_Process.load_income_process(import_path, files)
