@@ -18,6 +18,12 @@ This repository holds the files used for my Masters' thesis
 
 2. .R file Tidying PNAD data and creating transitions and state-spaces
 
+  Requires 'consumption_total.csv' and 'morador_count.csv' files from step 1.
+  
+  Returns 'temptation_filtered.csv' containing total, temptation and non-temptation consumption per capita by household id, after making pertinent data-cleaning
+  
+  Runs regression for case A and C, requires input from GMM for case B
+  Plots comparison graphs for the three calibrations
 
 3. .R file conducting parametric estimates
 
