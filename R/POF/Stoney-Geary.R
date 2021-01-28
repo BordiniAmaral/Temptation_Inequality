@@ -82,7 +82,7 @@ if(trim_outliers){
     filter(total_monthly_pc > lower_trim, total_monthly_pc < upper_trim)
 }
 
-fwrite(temptation_filtered, "temptation_filtered.csv", sep = ";")
+# fwrite(temptation_filtered, "temptation_filtered.csv", sep = ";")
 
 #-----------------------------------------------------------------------
 #      Plotting curves from gammas and x0 (for arbitrary tests)
@@ -104,19 +104,20 @@ y_sim_gamma <- function(x0,gamma1,gamma2,x){
            x0 = x0)
 
   return(results)
-} # REMEMBER TO CHECK IF FUNCTIONAL FORM IS UP TO DATE
+}
 
 x_points <- seq(0,240000,100) # DEFINE X-AXIS RANGE
 
-settings <- list(x0 = 0,
-                 gamma1 = 1,
-                 gamma2 = 1) # INSERT VALUES HERE
+settings <- list(x0 = 75*12,
+                 gamma1 = -2.2,
+                 gamma2 = 0.96) # INSERT VALUES HERE
 
 teste <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
 
 ggplot() +
   geom_line(data = teste, aes(x = total/12, y = tempt_frac, colour = factor(x0))) +
-  geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac))
+  geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac)) +
+  coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.1))
 
 ggplot() +
   geom_point(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac), size = 0.7) +

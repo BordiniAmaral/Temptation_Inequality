@@ -28,10 +28,9 @@ def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gri
     print("------------------------ \n   Current x0:",x0,"  \n------------------------\n")
     sqe = np.zeros(shape = (len(grid_gam1), len(grid_gam2)))
     counter = 0
-    gam2_start = np.int32(0)
     
     for gam1 in range(len(grid_gam1)):
-        for gam2 in range(gam2_start, len(grid_gam2)):
+        for gam2 in range(len(grid_gam2)):
             
             y_sim = np.zeros(shape = (len(data_x)))
             x_sim = np.zeros(shape = (len(data_x)))
@@ -40,7 +39,7 @@ def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gri
                 if consumpt[x] < (x0 + 2):
                     x_sim[x] = consumpt[x]
                 else:
-                    x_sim[x] = Newton(f, df, (x0 + 0.0001), 1e-6,int(1e6), consumpt[x], gam1, gam2, x0)
+                    x_sim[x] = Newton(f, df, (x0 + 1), 1e-6,int(1e6), consumpt[x], grid_gam1[gam1], grid_gam2[gam2], x0)
                     y_sim[x] = (data_x[x] + data_y[x]) - x_sim[x]
             
             sqe[gam1,gam2] = calculate_sqe(y_sim, data_x, data_y, gridm, cons_bin, y_data_sel_sum, W)[0]
@@ -245,7 +244,7 @@ def initial_computations(data_x, data_y, gridq, grid_x0):
     gridm = np.quantile(consumpt,gridq)
     
     for c in range(len(consumpt)): 
-            cons_bin[c] = np.int64(np.sum(gridm < consumpt[c]) - 1)
+            cons_bin[c] = np.int64(np.sum(gridm <= consumpt[c]) - 1)
             
     for b in range(len(gridm)):
         y_data_sel_sum[b] = np.sum(data_y[cons_bin == b])
