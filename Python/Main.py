@@ -11,7 +11,7 @@
 #                               MAIN FILE                                    #
 ##############################################################################
 
-#%% Loading necessary packages
+#%% Loading some packages
 
 import numpy as np
 
