@@ -2,9 +2,6 @@
 # This file is dedicated to exploring the stoney-geary formulation in an
 # environment with temptation.
 #
-# For several x0 guesses, run regressions on intratemporal optimality
-# conditions, obtain implied sigmas and plots simulated curves
-#
 # [REQUIRES]
 # consumption_total dataframe obtained from tidying_data.R
 # morador_count dataframe obtained from tidying_data.R

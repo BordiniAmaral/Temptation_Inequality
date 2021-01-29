@@ -28,6 +28,8 @@ def calculate_KL(r, delta, alpha, A):
 def calculate_w(alpha, A, KL):
     return (1-alpha)*A*KL**alpha
 
+
+# Computes aggregate Labor measure
 @njit
 def calculate_labor(gridz, mass_z, n):
     
@@ -40,6 +42,7 @@ def calculate_labor(gridz, mass_z, n):
     
     return np.sum(L_mass)
 
+'''
 @njit
 def partial_sol_baseline(n, beta, alpha, Pi, gridz, grida, x, y, x_last, y_last, sigma_x, sigma_y, xi, x0, temptation = True):
     
@@ -126,6 +129,7 @@ def partial_sol_baseline(n, beta, alpha, Pi, gridz, grida, x, y, x_last, y_last,
                     choice_a[period,z1,a1] = np.argmax(Aux[z1,a1,:])
     
     return V, choice_a
+'''
 
 @njit
 def compute_utility_grids(x,y,grida,gridz,n,sigma_x,sigma_y,xi,x0, bound):
@@ -156,7 +160,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
     print("Computing utility grids...")
     U, T = compute_utility_grids(x, y, grida ,gridz, n, sigma_x, sigma_y, xi, x0, bound)
 
-    # Creating choice objects choice(period, productivity, current asset)
+    # Creating choice objects choice (period, productivity, current asset)
     choice_a = np.zeros(shape = (n, len(gridz), len(grida)))
     
     # Creating options (productivity, current asset, next asset, age)
@@ -172,7 +176,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
     print("Starting backards iteration of optimal solutions")
     for period in range(n-1, -1, -1):
         
-        # Last period implies consumption of positive assets
+        # Last period implies consumption of all positive assets
         if period == n-1:
             for a1 in range(len(grida)):
                 choice_a[period, :, a1] = zero_asset_index
@@ -296,14 +300,14 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
         print("\n Testing r:",init_r[r])
         KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[r], mass_z, transfer, A, temptation, x0)
         
-        L_total = zsum / w # CORRECT THIS
+        L_total = zsum / w # zsum is total salary mass considering the ranges in POF
         KLs = k_total / L_total
         
         if k_total > 0:
             excess_KL[r] = KLs - KLd
         else:
             print("Negative capital supply reached. Reasses given r.")
-            excess_KL[r] = 1e10
+            excess_KL[r] = -1e10
     
     if excess_KL[0] < 0:
         print("Lower r checked: OK. Current error:",excess_KL[0])
@@ -358,7 +362,7 @@ def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, m
     KL = calculate_KL(r, delta, alpha, A)
     w = calculate_w(alpha, A, KL)
     
-    # Adapting gridz to correspond to salary in R$:
+    # Adapting gridz to correspond to hh annual disposable income in R$:
     gridz_new = gridz/w
     
     # Creating allocation grid

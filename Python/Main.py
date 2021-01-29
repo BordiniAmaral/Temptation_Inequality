@@ -61,7 +61,7 @@ print("\nParameters found: \n x0:",grid_x0[sol[0][0]]/12,"\n gam1:",grid_gam1[so
 
 #%% Simulating
 
-import OLG_A_Power as olg
+import OLG_A_CRRA as olg
 
 # Example gridspace...
 grida_space = np.zeros(120)
@@ -86,19 +86,19 @@ grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/2))]),[0
 gridz = values
 Pi = transition
 n = 40
-xi = 0.452
+xi = 0.618
 delta = 0.05
-beta = 0.98
+beta = 0.89
 alpha = 0.4
-sigma_x = 1.6
-sigma_y = 1.42
+sigma_x = 0.21
+sigma_y = 0.22
 transfer = 0
-x0 = 75*12
+x0 = 45*12
 
 A = 1 
-r_low = 0
+r_low = 0.03
 r_high = 0.2
-# Check if using correct mass grid for z
+# Check if using correct mass grid for z (it must be coherent with gridz imported from PNAD)
 mass_z = np.concatenate((np.repeat(0.02,5),np.repeat(0.1,8),np.repeat(0.02,5))) 
 
 # Computing a single GE - with Temptation
