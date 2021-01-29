@@ -24,24 +24,6 @@ files = ["average_matrix1.csv", "quantile_frontiers.csv", "quantile_values.csv"]
 
 transition, values = Income_Process.load_income_process(import_path, files)
 
-#%% Menu
-
-# Options here will include:
-    
-    # Setting the income process according to some inputable parameters:
-        # Number of periods
-        # Empirical data from where to base the process
-        
-    # Calibrating the model:
-        # Externally calibrated preference parameters -> check resulting distribution
-        # Internally calibrated preference parameters -> match wealth distribution / savings pattern
-        
-    # Simulating counterfactuals from established model
-    
-    # Plotting results
-    
-    # Exit program
-
 #%% Calibration
 
 import Calibration as cb
@@ -64,9 +46,9 @@ gridq = np.arange(0,1,0.1)
 W = np.identity(len(gridq))
 
 # Building which parameters will be explored:
-grid_x0 = np.arange(40*12,70*12,2*12)
-grid_gam1 = np.arange(-2.5,-1,0.025)
-grid_gam2 = np.arange(0.80,0.99,0.01)
+grid_x0 = np.arange(35*12,65*12,1*12)
+grid_gam1 = np.arange(-2.5,-1.5,0.02)
+grid_gam2 = np.arange(0.80,0.99,0.005)
 
 # Running the simulations
 sqe = cb.run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W)

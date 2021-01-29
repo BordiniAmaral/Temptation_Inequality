@@ -34,7 +34,7 @@ library(dtplyr)
 # Cleaning undesired objects
 rm(list = setdiff(ls(), c("consumption_total","morador_count")))
 
-export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/R Project/Exports"
+export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/R Project/Exports (Post-Jan21)"
 setwd(export_path)
 
 
@@ -82,6 +82,7 @@ if(trim_outliers){
     filter(total_monthly_pc > lower_trim, total_monthly_pc < upper_trim)
 }
 
+# In case you want to save this dataframe:
 # fwrite(temptation_filtered, "temptation_filtered.csv", sep = ";")
 
 #-----------------------------------------------------------------------
@@ -128,93 +129,80 @@ ggplot() +
 #   Running regressions (Cases A,C), inserting GMM result (Case B)
 #-----------------------------------------------------------------------
 
-# Function for obtaining implied sigmas from gammas, under arbitrary xi
-sigma_x_eq <- function(sigma_x, gamma1, gamma2, xi){
-  error <- gamma2*sigma_x*log(gamma2*(sigma_x-1)/(gamma2*sigma_x - 1)*(1/xi)) + gamma1
-  return(error^2)
-} # REMEMBER TO CHECK IF FUNCTIONAL FORM IS UP TO DATE
+# Obtaining (sigma_y, xi) from (gamma1, gamma2, sigma_x)
+
+sigy_xi_implied <- function(gamma1, gamma2, sigma_x){
+  sigma_y <- sigma_x / gamma2
+  xi <- exp(sigma_y*gamma1)
+
+  return(c(sigma_y,xi))
+}
+
+# Default external sigma_x (from Issler, Piqueira (2000))
+sigma_x <- 0.21
 
 #--------------------------- Case A ------------------------------------
 
 # Define x0 (annual) used: 0 for case A; the same as case B for case C
-x0 <- 75*12
+x0_A <- 0
 upper_trim <- 20000 # monthly per capita
 
 temptation_filtered_regA <- temptation_cross %>%
   filter(temptation > 0 , total_monthly_pc < upper_trim, total_monthly_pc*12 > x0)
 
-lm_A <- lm(log(temptation_pc) ~ log(`non-temptation_pc` - x0) + 1, temptation_filtered_regA)
+lm_A <- lm(log(temptation_pc) ~ log(`non-temptation_pc` - x0_A) + 1, temptation_filtered_regA)
 summary(lm_A)
 
 # Generating Stargazer Table
 stargazer(lm_A, ci = T, style = "qje") # SEE IF IT IS POSSIBLE TO IMPROVE THIS OUTPUT
 
-# Obtaining implied sigmas from gammas, under arbitrary xi (to use arbitrary sigma_x in the future)
+# Obtaining implied sigma_y and xi from gammas, under arbitrary sigma_x
 gammas_A <- lm_A$coefficients
-xi <- 1
 
-optim <- optimize(interval = c(1.01,100),
-                  f = sigma_x_eq,
-                  gamma1 = gammas_A[1],
-                  gamma2 = gammas_A[2],
-                  xi = xi)
-
-sigma_x_A <- optim$minimum
-sigma_y_A <- gammas[2]*sigma_x
-names(sigma_y_A) <- NULL
+implied <- sigy_xi_implied(gammas_A[1], gammas_A[2], sigma_x)
+sigma_y_A <- implied[1]
+xi_A <- implied[2]
+rm(implied)
 
 #--------------------------- Case B ------------------------------------
 
 # Manually input these values from python GMM script
 
-x0_B <- 0           # INSERT VALUE HERE
-gammas_B <- c(1,2)  # INSERT VALUE HERE
+x0_B <- 45*12                 # INSERT VALUE HERE (remember to *12 for yearly basis)
+gammas_B <- c(-2.2,0.96)      # INSERT VALUE HERE
 
-# Obtaining implied sigmas from gammas, under arbitrary xi (to use arbitrary sigma_x in the future)
-xi <- 1
+# Obtaining implied sigma_y and xi from gammas, under arbitrary sigma_xxi <- 1
 
-optim <- optimize(interval = c(1.01,100),
-                  f = sigma_x_eq,
-                  gamma1 = gammas_A[1],
-                  gamma2 = gammas_A[2],
-                  xi = xi)
-
-sigma_x_B <- optim$minimum
-sigma_y_B <- gammas[2]*sigma_x
-names(sigma_y_B) <- NULL
+implied <- sigy_xi_implied(gammas_B[1], gammas_B[2], sigma_x)
+sigma_y_B <- implied[1]
+xi_B <- implied[2]
+rm(implied)
 
 #--------------------------- Case C ------------------------------------
 
-
 # Define x0 (annual) used: 0 for case A; the same as case B for case C
-x0 <- 75*12
+x0_C <- x0_B
 upper_trim <- 20000 # monthly per capita
 
 temptation_filtered_regC <- temptation_cross %>%
   filter(temptation > 0 , total_monthly_pc < upper_trim, total_monthly_pc*12 > x0)
 
-lm_C <- lm(log(temptation_pc) ~ log(`non-temptation_pc` - x0) + 1, temptation_filtered_regC)
+lm_C <- lm(log(temptation_pc) ~ log(`non-temptation_pc` - x0_C) + 1, temptation_filtered_regC)
 summary(lm_C)
 
 # Generating Stargazer Table
 stargazer(lm_C, ci = T, style = "qje") # SEE IF IT IS POSSIBLE TO IMPROVE THIS OUTPUT
 
-# Obtaining implied sigmas from gammas, under arbitrary xi (to use arbitrary sigma_x in the future)
+# Obtaining implied sigma_y and xi from gammas, under arbitrary sigma_x
 gammas_C <- lm_C$coefficients
-xi <- 1
 
-optim <- optimize(interval = c(1.01,100),
-                  f = sigma_x_eq,
-                  gamma1 = gammas_C[1],
-                  gamma2 = gammas_C[2],
-                  xi = xi)
-
-sigma_x_A <- optim$minimum
-sigma_y_A <- gammas[2]*sigma_x
-names(sigma_y_A) <- NULL
+implied <- sigy_xi_implied(gammas_C[1], gammas_C[2], sigma_x)
+sigma_y_C <- implied[1]
+xi_C <- implied[2]
+rm(implied)
 
 
-# To have a look, adapt which dataset you are selecting:
+# To have a quick look, adapt which dataset you are selecting:
 
 ggplot(temptation_filtered_reg) +
   geom_smooth(aes(x = total_monthly_pc, y = tempt_frac)) +
@@ -256,11 +244,14 @@ testeB <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
 
 # Solution C: regression with x0 from solution B
 
-settings <- list(x0 = x0_B,
+settings <- list(x0 = x0_C,
                  gamma1 = gammas_C[1],
                  gamma2 = gammas_C[2])
 
 testeC <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
+
+# Removing the 'settings' object
+rm(settings)
 
 # Comparative graph for tempt frac
 ggplot() +
