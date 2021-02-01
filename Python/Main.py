@@ -88,7 +88,7 @@ Pi = transition
 n = 40
 xi = 0.618
 delta = 0.05
-beta = 0.89
+beta = 0.96
 alpha = 0.4
 sigma_x = 0.21
 sigma_y = 0.22
@@ -130,8 +130,15 @@ quants = [0.2,0.5,0.9,0.95,0.99]
 grp.plot_k_evolution(age_start, n, mass_by_age_k, quants, grida, description = "with temptation")
 grp.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description = "without temptation")
 
+# Savings Rate
+gross_savings, savings_rate = grp.savings_rate(n, grida, choice_a, gridz, mass_z, r)
+gross_savings_nt, savings_rate_nt = grp.savings_rate(n, grida, choice_a_nt, gridz, mass_z, r_nt)
+
+grp.plot_savings_rate(age_start, n, gross_savings, savings_rate, distr_mass, mass_z)
+
 #%% Calculating some stats
 
+# Wealth Gini
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass)
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass_nt, k_mass_nt)
 

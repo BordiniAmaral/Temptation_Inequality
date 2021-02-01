@@ -153,7 +153,7 @@ def compare_total_k_lorenz(mass_by_k1, mass_by_k2, grida, description, label1, l
     
 def plot_k_evolution(age_start,n,mass_by_age_k, quants, grida, description):
     
-    cumulative_per_age = np.cumsum(mass_by_age_k,axis = 1) * n
+    cumulative_per_age = np.cumsum(mass_by_age_k,axis = 1) * (n+1)
     
     # Finding indexes for each quantile at each age
     quant_index = np.zeros(shape = (len(quants),n))
@@ -210,3 +210,44 @@ def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grid
     ax.get_yaxis().set_major_formatter(
         mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
     fig.show()
+
+def savings_rate(n, grida, choice_a, gridz, mass_z, r):
+    
+    # Amount saved/dissaved by each state (age, productivity, asset position)
+    # Considering savings as change in asset position
+    
+    gross_savings = np.zeros(shape = (n,len(mass_z),len(grida)))
+    savings_rate = np.zeros(shape = (n,len(mass_z),len(grida)))
+    
+    for age in range(n):
+        for z in range(len(mass_z)):
+            for a in range(len(grida)):
+                gross_savings[age,z,a] = grida[int(choice_a[age,z,a])] - grida[a]
+                savings_rate[age,z,a] = gross_savings[age,z,a] / (gridz[z,age]+r*grida[a])
+    
+    return gross_savings, savings_rate
+
+# REWRITE THIS TO USE ARBITRARY QUANTS
+def plot_savings_rate(age_start, n, gross_savings, savings_rate, distr_mass, mass_z):
+    
+    avg_rate_by_age_z = np.sum(savings_rate * distr_mass[:-1,:,:], axis = 2) / np.sum(distr_mass[:-1,:,:], axis = 2)
+    avg_gross_by_age_z = np.sum(gross_savings * distr_mass[:-1,:,:], axis = 2) / np.sum(distr_mass[:-1,:,:], axis = 2)
+    
+    z_cum = np.cumsum(mass_z)
+    
+    # Plotting
+    age_tick = np.arange(age_start,age_start+n)
+    
+    fig, (ax1,ax2) = plt.subplots(1,2, sharex = True, figsize=(12,6))
+    for z in range(len(z_cum)):
+        ax1.plot(age_tick, avg_rate_by_age_z[:,z], label = "Income quantile "+str(z_cum[z]))
+        ax2.plot(age_tick, avg_gross_by_age_z[:,z], label = "Income quantile "+str(z_cum[z]))
+    ax1.legend(loc='upper left')
+    ax2.legend(loc='upper left')
+    ax2.set_xlabel('Household head age')
+    ax1.set_ylabel('Average savings rate')
+    ax2.set_ylabel('Average gross savings [BRL]')
+    ax2.get_yaxis().set_major_formatter(
+        mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+    fig.show()
+    
