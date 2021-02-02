@@ -18,7 +18,7 @@ library(glue)
 library(data.table)
 
 #-----------------------------------------------------------------------
-#                     IMPORTING AND TIDYING PNADc DATA
+#                     DOWNLOADING AND TIDYING PNADc DATA
 #-----------------------------------------------------------------------
 
 
@@ -173,7 +173,7 @@ pnadc_hh <- bind_rows(pnadc_hh)
 #      Establishing state-space for quantiles of hh income by age
 #-----------------------------------------------------------------------
 
-export_path <- "C:/Backup Acer/EESP-Mestrado/Dissertação/PNADC/R Project/Transitions by age"
+export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/PNADC/R Project/Transitions by age"
 setwd(export_path)
 
 quantile_frontiers <- pnadc_hh %>%
@@ -197,11 +197,7 @@ quantile_frontiers <- pnadc_hh %>%
             q40 = quantile(hh_net_defla_annualized_pc, probs = 0.40, type = 8),
             q30 = quantile(hh_net_defla_annualized_pc, probs = 0.30, type = 8),
             q20 = quantile(hh_net_defla_annualized_pc, probs = 0.20, type = 8),
-            q10 = quantile(hh_net_defla_annualized_pc, probs = 0.10, type = 8),
-            q08 = quantile(hh_net_defla_annualized_pc, probs = 0.08, type = 8),
-            q06 = quantile(hh_net_defla_annualized_pc, probs = 0.06, type = 8),
-            q04 = quantile(hh_net_defla_annualized_pc, probs = 0.04, type = 8),
-            q02 = quantile(hh_net_defla_annualized_pc, probs = 0.02, type = 8)) %>%
+            q10 = quantile(hh_net_defla_annualized_pc, probs = 0.10, type = 8)) %>%
   pivot_longer(cols = starts_with("q"), names_to = "quant")
 
 quantile_values <- pnadc_hh %>%
@@ -226,11 +222,7 @@ quantile_values <- pnadc_hh %>%
             v30 = quantile(hh_net_defla_annualized_pc, probs = 0.35, type = 8),
             v20 = quantile(hh_net_defla_annualized_pc, probs = 0.25, type = 8),
             v10 = quantile(hh_net_defla_annualized_pc, probs = 0.15, type = 8),
-            v08 = quantile(hh_net_defla_annualized_pc, probs = 0.09, type = 8),
-            v06 = quantile(hh_net_defla_annualized_pc, probs = 0.07, type = 8),
-            v04 = quantile(hh_net_defla_annualized_pc, probs = 0.05, type = 8),
-            v02 = quantile(hh_net_defla_annualized_pc, probs = 0.03, type = 8),
-            v00 = quantile(hh_net_defla_annualized_pc, probs = 0.01, type = 8)) %>%
+            v08 = quantile(hh_net_defla_annualized_pc, probs = 0.05, type = 8)) %>%
   pivot_longer(cols = starts_with("v"), names_to = "quant_v")
 
 fwrite(quantile_frontiers, file = "quantile_frontiers.csv", sep = ";")
@@ -259,11 +251,7 @@ quantile_frontiers_current <- pnadc_hh %>%
             q40 = quantile(hh_net_defla_annualized_pc, probs = 0.40, type = 8),
             q30 = quantile(hh_net_defla_annualized_pc, probs = 0.30, type = 8),
             q20 = quantile(hh_net_defla_annualized_pc, probs = 0.20, type = 8),
-            q10 = quantile(hh_net_defla_annualized_pc, probs = 0.10, type = 8),
-            q08 = quantile(hh_net_defla_annualized_pc, probs = 0.08, type = 8),
-            q06 = quantile(hh_net_defla_annualized_pc, probs = 0.06, type = 8),
-            q04 = quantile(hh_net_defla_annualized_pc, probs = 0.04, type = 8),
-            q02 = quantile(hh_net_defla_annualized_pc, probs = 0.02, type = 8)) %>%
+            q10 = quantile(hh_net_defla_annualized_pc, probs = 0.10, type = 8)) %>%
   pivot_longer(cols = starts_with("q"), names_to = "quant")
 
 quantile_frontiers_next <- pnadc_hh %>%
@@ -290,11 +278,7 @@ quantile_frontiers_next <- pnadc_hh %>%
             q40 = quantile(hh_net_defla_annualized_pc, probs = 0.40, type = 8),
             q30 = quantile(hh_net_defla_annualized_pc, probs = 0.30, type = 8),
             q20 = quantile(hh_net_defla_annualized_pc, probs = 0.20, type = 8),
-            q10 = quantile(hh_net_defla_annualized_pc, probs = 0.10, type = 8),
-            q08 = quantile(hh_net_defla_annualized_pc, probs = 0.08, type = 8),
-            q06 = quantile(hh_net_defla_annualized_pc, probs = 0.06, type = 8),
-            q04 = quantile(hh_net_defla_annualized_pc, probs = 0.04, type = 8),
-            q02 = quantile(hh_net_defla_annualized_pc, probs = 0.02, type = 8)) %>%
+            q10 = quantile(hh_net_defla_annualized_pc, probs = 0.10, type = 8)) %>%
   pivot_longer(cols = starts_with("q"), names_to = "quant")
 
 #-----------------------------------------------------------------------
@@ -393,15 +377,14 @@ build_transitions <- function(age,
 
   # Building a proper matrix for this transition
   row.names(transition_matrix) <- glue("q{transition_matrix$current_q}")
-  quantiles <- seq(from = 0, to = 17, by = 1)
+  quantiles <- seq(from = 0, to = 13, by = 1)
   matrix_1 <- as.matrix(transition_matrix[,glue("q{quantiles}")])
 
   fwrite(matrix_1, file = glue("{age}yo_matrix1.csv"))
 
   # Density plot of current transition
 
-  quantile_points <- c(seq(0.02,0.08,0.02),
-                       seq(0.1,0.9,0.1),
+  quantile_points <- c(seq(0,0.9,0.1),
                        seq(0.92,1,0.02))
 
   current_transition <- current_transition %>%
@@ -454,7 +437,7 @@ average_transition <- transitions_with_quantile %>%
 
 # Building a proper matrix for the average transition ####
 row.names(average_transition) <- glue("q{average_transition$current_q}")
-quantiles <- seq(from = 0, to = 17, by = 1)
+quantiles <- seq(from = 0, to = 13, by = 1)
 matrix_a <- as.matrix(average_transition[,glue("q{quantiles}")])
 
 fwrite(matrix_a, file = glue("average_matrix1.csv"))
@@ -463,16 +446,13 @@ fwrite(matrix_a, file = glue("average_matrix1.csv"))
 
 # Creating labels
 
-quantile_points <- c(seq(0.02,0.08,0.02),
-                     seq(0.1,0.9,0.1),
+quantile_points <- c(seq(0.1,0.9,0.1),
                      seq(0.92,1,0.02))
 
-interval_l <- c(seq(0,0.08,0.02),
-                seq(0.1,0.9,0.1),
+interval_l <- c(seq(0,0.9,0.1),
                 seq(0.92,0.98,0.02))
 
-interval_u <- c(seq(0.02,0.08,0.02),
-                seq(0.1,0.9,0.1),
+interval_u <- c(seq(0.1,0.9,0.1),
                 seq(0.92,1,0.02))
 
 width <- interval_u - interval_l
@@ -496,7 +476,7 @@ quantile_points$current_quantile <- as.factor(quantile_points$current_quantile)
 
 ggplot(transitions_with_quantile)+
   geom_density(aes(next_quantile, colour = current_quantile, fill = current_quantile), kernel = "gaussian", adjust = 5, alpha = 0.1, outline.type = "both", trim = TRUE)+
-  facet_wrap(~current_quantile, labeller = labeller(current_quantile = quant.lab), ncol = 9) +
+  facet_wrap(~current_quantile, labeller = labeller(current_quantile = quant.lab), ncol = 7) +
   geom_vline(data = quantile_points, aes(xintercept = x_vline), linetype = "dashed") +
   labs(title = glue("Disposable income per capita one-year transition - Average 25-65 y.o. family heads"),
        subtitle = " PNADC 2012-2018 \n Facet label: Current Quantile",
