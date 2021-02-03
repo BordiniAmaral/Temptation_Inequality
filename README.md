@@ -41,4 +41,11 @@ This repository holds the files used for my Masters' thesis
   Returns 'complete_transitions.csv' with all PNADC (t,t+4) transitions for the period
   Returns matrices and graphs for transition (by age and aggregate)
 
-## 5. .py file with heterogeneous-agent model, calibration and graphs
+## 5. Python/ .py files with heterogeneous-agent model, calibration and graphs:
+
+  Main.py is the main file, calling all others
+  Calibration.py conducts a blunt force GMM calibration of parameters x0, gamma1 and gamma2
+  Graphics.py executes some auxiliary calculations and plot resulting equilibrium stats
+  OLG_A_CRRA.py solves the lifecycle model in general equilibrium
+  Temptation_CRRA.py solves allocations for temptation and non-temptation consumptions
+  Income_Process.py imports the .csv file with transition matrix and income values
