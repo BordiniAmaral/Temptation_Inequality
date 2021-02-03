@@ -64,7 +64,7 @@ print("\nParameters found: \n x0:",grid_x0[sol[0][0]]/12,"\n gam1:",grid_gam1[so
 import OLG_A_CRRA as olg
 
 # Example gridspace...
-grida_space = np.zeros(120)
+grida_space = np.zeros(200)
 for a in range(len(grida_space)):
     if a == 0: 
         grida_space[a] = 100
@@ -72,16 +72,16 @@ for a in range(len(grida_space)):
         grida_space[a] = 200
     elif a < 5:
         grida_space[a] = grida_space[a-1]*1.5
-    elif a < 10:
+    elif a < 8:
         grida_space[a] = grida_space[a-1]*1.4
-    elif a < 20:
+    elif a < 15:
         grida_space[a] = grida_space[a-1]*1.2
-    elif a < 40:
+    elif a < 20:
         grida_space[a] = grida_space[a-1]*1.1
     else:
-        grida_space[a] = grida_space[a-1]*1.05
+        grida_space[a] = grida_space[a-1]*1.03
 
-grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/2))]),[0],grida_space))
+grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/5))]),[0],grida_space))
 
 gridz = values
 Pi = transition
@@ -99,7 +99,7 @@ A = 1
 r_low = 0.03
 r_high = 0.2
 # Check if using correct mass grid for z (it must be coherent with gridz imported from PNAD)
-mass_z = np.concatenate((np.repeat(0.02,5),np.repeat(0.1,8),np.repeat(0.02,5))) 
+mass_z = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
 # Computing a single GE - with Temptation
 KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = True, tol = 1e-2, maxit = 10000)
@@ -125,16 +125,18 @@ grp.compare_total_k_lorenz(mass_by_k, mass_by_k_nt, grida, description = "Calibr
 
 # Plotting Asset evolution by quantile
 age_start = 25
-quants = [0.2,0.5,0.9,0.95,0.99]
+quants = [0.5,1]
 
 grp.plot_k_evolution(age_start, n, mass_by_age_k, quants, grida, description = "with temptation")
 grp.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description = "without temptation")
 
 # Savings Rate
-gross_savings, savings_rate = grp.savings_rate(n, grida, choice_a, gridz, mass_z, r)
-gross_savings_nt, savings_rate_nt = grp.savings_rate(n, grida, choice_a_nt, gridz, mass_z, r_nt)
+gross_savings, savings_rate, total_income = grp.savings_and_income(n, grida, choice_a, gridz, mass_z, r)
+gross_savings_nt, savings_rate_nt, total_income_nt = grp.savings_and_income(n, grida, choice_a_nt, gridz, mass_z, r_nt)
 
-grp.plot_savings_rate(age_start, n, gross_savings, savings_rate, distr_mass, mass_z)
+grp.plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description = "With Temptation")
+grp.plot_savings_rate(age_start, n, gross_savings_nt, savings_rate_nt, total_income_nt, distr_mass_nt, quants, description = "Without Temptation")
+
 
 #%% Calculating some stats
 

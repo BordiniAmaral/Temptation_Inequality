@@ -211,43 +211,80 @@ def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grid
         mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
     fig.show()
 
-def savings_rate(n, grida, choice_a, gridz, mass_z, r):
+def savings_and_income(n, grida, choice_a, gridz, mass_z, r):
     
     # Amount saved/dissaved by each state (age, productivity, asset position)
     # Considering savings as change in asset position
     
     gross_savings = np.zeros(shape = (n,len(mass_z),len(grida)))
     savings_rate = np.zeros(shape = (n,len(mass_z),len(grida)))
+    total_income = np.zeros(shape = (n,len(mass_z),len(grida)))
     
     for age in range(n):
         for z in range(len(mass_z)):
             for a in range(len(grida)):
                 gross_savings[age,z,a] = grida[int(choice_a[age,z,a])] - grida[a]
-                savings_rate[age,z,a] = gross_savings[age,z,a] / (gridz[z,age]+r*grida[a])
+                total_income[age,z,a] = gridz[z,age]+r*grida[a]
+                savings_rate[age,z,a] = gross_savings[age,z,a] / total_income[age,z,a]
     
-    return gross_savings, savings_rate
+    return gross_savings, savings_rate, total_income
 
-# REWRITE THIS TO USE ARBITRARY QUANTS
-def plot_savings_rate(age_start, n, gross_savings, savings_rate, distr_mass, mass_z):
+
+def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description):
     
-    avg_rate_by_age_z = np.sum(savings_rate * distr_mass[:-1,:,:], axis = 2) / np.sum(distr_mass[:-1,:,:], axis = 2)
-    avg_gross_by_age_z = np.sum(gross_savings * distr_mass[:-1,:,:], axis = 2) / np.sum(distr_mass[:-1,:,:], axis = 2)
+    cohort_mass = np.sum(distr_mass[0,:,:])
     
-    z_cum = np.cumsum(mass_z)
+    quant_index = np.zeros(shape = (len(quants),n))
+    quant_value = np.zeros(shape = (len(quants),n)) # average savings rate
     
-    # Plotting
+    for age in range(n):
+        
+        # Turning multi-dimensional arrays into 1d
+        flat_income = np.ndarray.flatten(total_income[age,:,:])
+        flat_mass = np.ndarray.flatten(distr_mass[age,:,:])
+        flat_savings = np.ndarray.flatten(gross_savings[age,:,:])
+        
+        # Finding the increasing order of total income
+        flat_income_order = np.argsort(flat_income)
+        ordered_income = np.sort(flat_income)
+        
+        # Ordering income and respective masses
+        mass_ordered_by_income = flat_mass[flat_income_order]
+        gross_savings_ordered_by_income = flat_savings[flat_income_order]
+        
+        # Getting the cumulative mass in each age, ordered by income
+        cumulative_mass = np.cumsum(mass_ordered_by_income) / cohort_mass
+        
+        for q in range(len(quants)):
+            quant_index[q,age] = np.sum(cumulative_mass < quants[q])
+            
+            if q == 0:
+                low = int(0)
+            else:
+                low = int(quant_index[q-1,age])
+            top = int(quant_index[q,age])
+                
+            quant_value[q,age] = np.sum(mass_ordered_by_income[low:top] * gross_savings_ordered_by_income[low:top]) \
+                / np.sum(mass_ordered_by_income[low:top] * ordered_income[low:top])
+    
+     # Plotting
     age_tick = np.arange(age_start,age_start+n)
     
-    fig, (ax1,ax2) = plt.subplots(1,2, sharex = True, figsize=(12,6))
-    for z in range(len(z_cum)):
-        ax1.plot(age_tick, avg_rate_by_age_z[:,z], label = "Income quantile "+str(z_cum[z]))
-        ax2.plot(age_tick, avg_gross_by_age_z[:,z], label = "Income quantile "+str(z_cum[z]))
-    ax1.legend(loc='upper left')
-    ax2.legend(loc='upper left')
-    ax2.set_xlabel('Household head age')
-    ax1.set_ylabel('Average savings rate')
-    ax2.set_ylabel('Average gross savings [BRL]')
-    ax2.get_yaxis().set_major_formatter(
-        mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+    fig = plt.figure(figsize=(10,6))
+    ax = fig.add_subplot(111)
+    for q in range(len(quants)):
+        if q == 0:
+            low = str(0)
+        else:
+            low = str(np.int(quants[q-1]*100))
+        top = str(np.int(quants[q]*100))
+        label = low + " - " + top + "%"
+        ax.plot(age_tick, np.round(quant_value[q,:], decimals = 2), label = label)
+    ax.plot(age_tick,np.repeat(0,n), linestyle = '--', color= 'black', linewidth=0.9)
+    ax.legend(loc='lower left')
+    fig.suptitle('Savings rate by total income quantile - '+description)
+    ax.set_xlabel('Household head age')
+    ax.set_ylabel('Average savings rate')
     fig.show()
+
     
