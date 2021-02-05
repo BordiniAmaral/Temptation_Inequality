@@ -169,6 +169,8 @@ consumption_total <- consumption_total %>%
 #                     INCOME TABLES
 #-----------------------------------------------------------------------
 
+cadastro_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/2018/Documentacao_20200403/Cadastro de Produtos.xls"
+cadastro_produto <- read_xls(cadastro_path, col_types = "text")
 temp_cadastro <- cadastro_produto %>% select(V9001,V9000,category)
 
 # Adding category to "other incomes"
@@ -241,6 +243,7 @@ savings_by_residual <- all_consumption %>%
 #                     SAVING TABLES
 #-----------------------------------------------------------------------
 
-# setwd(export_path)
-# fwrite(consumption_total, "consumption_total.csv", sep = ";")
-# fwrite(morador_count, "morador_count.csv", sep = ";")
+ setwd(export_path)
+ fwrite(consumption_total, "consumption_total.csv", sep = ";")
+ fwrite(savings_by_residual, "savings_by_residual.csv", sep = ";")
+ fwrite(morador_count, "morador_count.csv", sep = ";")
