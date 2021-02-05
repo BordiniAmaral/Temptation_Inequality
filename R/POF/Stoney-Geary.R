@@ -53,7 +53,11 @@ temptation_cross <- consumption_total %>%
 
 if(remove_durables){
   temptation_cross <-  temptation_cross %>%
-    filter(!(category %in% c("household acquisition","durable selling","vehicle acquisition")))
+    filter(!(category %in% c("household acquisition",
+                             "durable selling",
+                             "vehicle acquisition",
+                             "household construction and repair",
+                             "social security")))
 }
 
 temptation_cross <- temptation_cross %>%

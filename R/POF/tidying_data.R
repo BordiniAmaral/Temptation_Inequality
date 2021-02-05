@@ -73,7 +73,7 @@ temp_cadastro <- cadastro_produto %>% select(V9001,V9000,category,temptation)
 #                     ADDING CATEGORY/TEMPTATION TO DATABASE
 #-----------------------------------------------------------------------
 
-# Adding category/temptation to expenditure/income tables
+# Adding category/temptation to expenditure tables
 despesa_ind_aggr <- despesa_ind_rds %>%
   mutate(V9001 = as.character(V9001)) %>%
   left_join(temp_cadastro, by = "V9001")
@@ -97,6 +97,7 @@ selling_aggr <- outros_rendimentos_rds %>%
   mutate(V8501_DEFLA = if_else(is.na(V8501_DEFLA),0,V8501_DEFLA),
          transaction = -(V8500_DEFLA - V8501_DEFLA),
          temptation = "non-temptation")
+
 
 #-----------------------------------------------------------------------
 #                     RETRIEVING HOUSEHOLD INFO
@@ -163,6 +164,78 @@ consumption_total <- consumption_total %>%
          annualized_exp = transaction * FATOR_ANUALIZACAO)
 
 # consumption_total is the main source of data for all exercises
+
+#-----------------------------------------------------------------------
+#                     INCOME TABLES
+#-----------------------------------------------------------------------
+
+temp_cadastro <- cadastro_produto %>% select(V9001,V9000,category)
+
+# Adding category to "other incomes"
+outros_rendimentos_rds <- outros_rendimentos_rds %>%
+  mutate(V9001 = as.character(V9001)) %>%
+  left_join(temp_cadastro, by = "V9001")
+
+# Selecting pertinent columns from income tables
+
+rendimento_select <- rendimentos_rds %>%
+  select(COD_UPA,NUM_DOM,NUM_UC,V9001,V9011,V8500_DEFLA,V531112_DEFLA,V531122_DEFLA,V531132_DEFLA) %>%
+  replace_na(list(V9011 = 1)) %>%
+  replace(is.na(.),0) %>%
+  mutate(category = "income",
+         COD_UPA = str_pad(COD_UPA,9,pad = "0"),
+         NUM_DOM = str_pad(NUM_DOM,2,pad = "0"),
+         NUM_UC = str_pad(NUM_UC,2,pad = "0"),
+         id = paste0(COD_UPA,NUM_DOM,NUM_UC),
+         annual_defla = V9011*(V8500_DEFLA - V531112_DEFLA - V531122_DEFLA - V531132_DEFLA))
+
+outros_rendimentos_select <- outros_rendimentos_rds %>%
+  select(COD_UPA,NUM_DOM,NUM_UC,V9001,V9011,V8500_DEFLA,V8501_DEFLA, category) %>%
+  replace_na(list(V9011 = 1)) %>%
+  replace(is.na(.),0) %>%
+  mutate(COD_UPA = str_pad(COD_UPA,9,pad = "0"),
+         NUM_DOM = str_pad(NUM_DOM,2,pad = "0"),
+         NUM_UC = str_pad(NUM_UC,2,pad = "0"),
+         id = paste0(COD_UPA,NUM_DOM,NUM_UC),
+         annual_defla = V9011*(V8500_DEFLA - V8501_DEFLA))
+
+# Grouping by household all relevant incomes and expenditures in order to obtain
+# savings by Income - Consumption
+
+outros_rendimentos_clean <- outros_rendimentos_select %>%
+  filter(category %in% c("income","bequest","transfers")) %>%
+  select(id,annual_defla)
+
+rendimento_clean <- rendimento_select %>%
+  select(id,annual_defla)
+
+all_income <- rendimento_clean %>%
+  bind_rows(outros_rendimentos_clean) %>%
+  group_by(id) %>%
+  summarise(total_income = sum(annual_defla)) %>%
+  ungroup() %>%
+  left_join(morador_count, by = c("id" = "hh_id")) %>%
+  mutate(income_pc = total_income / n)
+
+all_consumption <- consumption_total %>%
+  filter(temptation != "n/a") %>%
+  filter(!(category %in% c("household acquisition",
+                           "durable selling",
+                           "vehicle acquisition",
+                           "household construction and repair",
+                           "social security"))) %>%
+  select(id,annualized_exp) %>%
+  group_by(id) %>%
+  summarise(total_expenditure = sum(annualized_exp)) %>%
+  ungroup() %>%
+  left_join(morador_count, by = c("id" = "hh_id")) %>%
+  mutate(exp_pc = total_expenditure / n)
+
+savings_by_residual <- all_consumption %>%
+  select(-n) %>%
+  inner_join(all_income, by = "id") %>%
+  mutate(gross_savings_pc = income_pc - exp_pc,
+         savings_rate = gross_savings_pc / income_pc)
 
 #-----------------------------------------------------------------------
 #                     SAVING TABLES
