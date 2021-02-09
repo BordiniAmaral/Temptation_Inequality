@@ -222,7 +222,7 @@ quantile_values <- pnadc_hh %>%
             v30 = quantile(hh_net_defla_annualized_pc, probs = 0.35, type = 8),
             v20 = quantile(hh_net_defla_annualized_pc, probs = 0.25, type = 8),
             v10 = quantile(hh_net_defla_annualized_pc, probs = 0.15, type = 8),
-            v08 = quantile(hh_net_defla_annualized_pc, probs = 0.05, type = 8)) %>%
+            v00 = quantile(hh_net_defla_annualized_pc, probs = 0.05, type = 8)) %>%
   pivot_longer(cols = starts_with("v"), names_to = "quant_v")
 
 fwrite(quantile_frontiers, file = "quantile_frontiers.csv", sep = ";")

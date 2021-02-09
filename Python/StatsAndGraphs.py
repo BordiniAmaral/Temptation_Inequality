@@ -211,31 +211,74 @@ def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grid
         mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
     fig.show()
 
-def savings_and_income(n, grida, choice_a, gridz, mass_z, r):
+def savings_and_income(n, grida, choice_a, gridz, r, include_interest):
     
     # Amount saved/dissaved by each state (age, productivity, asset position)
     # Considering savings as change in asset position
     
-    gross_savings = np.zeros(shape = (n,len(mass_z),len(grida)))
-    savings_rate = np.zeros(shape = (n,len(mass_z),len(grida)))
-    total_income = np.zeros(shape = (n,len(mass_z),len(grida)))
+    gross_savings = np.zeros(shape = (n,len(gridz[:,0]),len(grida)))
+    savings_rate = np.zeros(shape = (n,len(gridz[:,0]),len(grida)))
+    total_income = np.zeros(shape = (n,len(gridz[:,0]),len(grida)))
     
     for age in range(n):
-        for z in range(len(mass_z)):
+        for z in range(len(gridz[:,0])):
             for a in range(len(grida)):
                 gross_savings[age,z,a] = grida[int(choice_a[age,z,a])] - grida[a]
-                total_income[age,z,a] = gridz[z,age]+r*grida[a]
+                total_income[age,z,a] = gridz[z,age] + r*grida[a]*include_interest
                 savings_rate[age,z,a] = gross_savings[age,z,a] / total_income[age,z,a]
     
     return gross_savings, savings_rate, total_income
 
+def savings_by_quants(n, grida, choice_a, gridz, r, distr_mass, quants, include_interest):
+    
+    gross_savings, savings_rate, total_income = savings_and_income(n, grida, choice_a, gridz, r, include_interest)
+    
+    lifecycle_mass = np.sum(distr_mass[:n,:,:])
+    
+    quant_index = np.zeros(shape = (len(quants)))
+    quant_mean = np.zeros(shape = (len(quants)))    # average savings rate by quant
+    quant_wt_sd = np.zeros(shape = (len(quants)))   # weighted standard deviation of savings by quant
+    
+    # Turning multi-dimensional arrays into 1d
+    flat_income = np.ndarray.flatten(total_income[:n,:,:])
+    flat_mass = np.ndarray.flatten(distr_mass[:n,:,:])
+    flat_savings = np.ndarray.flatten(gross_savings[:n,:,:])
+    
+    # Finding the increasing order of total income
+    flat_income_order = np.argsort(flat_income)
+    ordered_income = np.sort(flat_income)
+    
+    # Ordering income and respective masses
+    mass_ordered_by_income = flat_mass[flat_income_order]
+    gross_savings_ordered_by_income = flat_savings[flat_income_order]
+    
+    # Getting the cumulative mass in each age, ordered by income
+    cumulative_mass = np.cumsum(mass_ordered_by_income) / lifecycle_mass
+    
+    for q in range(len(quants)):
+        quant_index[q] = np.sum(cumulative_mass < quants[q])
+        
+        if q == 0:
+            low = int(0)
+        else:
+            low = int(quant_index[q-1])
+        top = int(quant_index[q])
+            
+        quant_mean[q] = np.sum(mass_ordered_by_income[low:top] * gross_savings_ordered_by_income[low:top]) \
+            / np.sum(mass_ordered_by_income[low:top] * ordered_income[low:top])
+        quant_wt_sd[q] = np.sqrt(np.sum((ordered_income[low:top]*mass_ordered_by_income[low:top])/np.sum(mass_ordered_by_income[low:top] * ordered_income[low:top]) \
+            * (gross_savings_ordered_by_income[low:top]/ordered_income[low:top] - quant_mean[q])**2))
+    
+    return quant_mean, quant_wt_sd
 
-def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description):
+def savings_by_quants_age(n, grida, choice_a, gridz, r, distr_mass, quants):
+    
+    gross_savings, savings_rate, total_income = savings_and_income(n, grida, choice_a, gridz, r)
     
     cohort_mass = np.sum(distr_mass[0,:,:])
     
-    quant_index = np.zeros(shape = (len(quants),n))
-    quant_value = np.zeros(shape = (len(quants),n)) # average savings rate
+    quant_age_index = np.zeros(shape = (len(quants),n))
+    quant_age_value = np.zeros(shape = (len(quants),n)) # average savings rate by quant and age
     
     for age in range(n):
         
@@ -256,16 +299,23 @@ def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, d
         cumulative_mass = np.cumsum(mass_ordered_by_income) / cohort_mass
         
         for q in range(len(quants)):
-            quant_index[q,age] = np.sum(cumulative_mass < quants[q])
+            quant_age_index[q,age] = np.sum(cumulative_mass < quants[q])
             
             if q == 0:
                 low = int(0)
             else:
-                low = int(quant_index[q-1,age])
-            top = int(quant_index[q,age])
+                low = int(quant_age_index[q-1,age])
+            top = int(quant_age_index[q,age])
                 
-            quant_value[q,age] = np.sum(mass_ordered_by_income[low:top] * gross_savings_ordered_by_income[low:top]) \
+            quant_age_value[q,age] = np.sum(mass_ordered_by_income[low:top] * gross_savings_ordered_by_income[low:top]) \
                 / np.sum(mass_ordered_by_income[low:top] * ordered_income[low:top])
+    
+    return quant_age_value
+
+# Should automatize to obtain savings before plotting
+def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description):
+    
+    quant_value = savings_by_quants_age(n, gross_savings, total_income, distr_mass, quants)
     
      # Plotting
     age_tick = np.arange(age_start,age_start+n)

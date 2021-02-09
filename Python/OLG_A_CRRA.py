@@ -354,7 +354,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     else:
         return None
     
-    return A, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r
+    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r
 
 @njit
 def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0):

@@ -97,7 +97,7 @@ x0 = 45*12
 
 A = 1 
 r_low = 0.03
-r_high = 0.2
+r_high = 0.1
 # Check if using correct mass grid for z (it must be coherent with gridz imported from PNAD)
 mass_z = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
@@ -110,33 +110,36 @@ KL_nt, w_nt, C_nt, x_nt, y_nt, V_nt, choice_a_nt, distr_mass_nt, k_mass_nt, k_to
 
 #%% Plotting
 
-import Graphics as grp
+import StatsAndGraphs as stg
 
-mass_by_k, mass_by_age_k = grp.capital_distributions(n, grida, gridz, distr_mass_nt, k_mass_nt)
-grp.plot_total_k_distr(mass_by_k, grida, 10000, "Calibration A, With Temptation")
-grp.plot_total_k_lorenz(mass_by_k, grida, "Calibration A, With Temptation")
+mass_by_k, mass_by_age_k = stg.capital_distributions(n, grida, gridz, distr_mass_nt, k_mass_nt)
+stg.plot_total_k_distr(mass_by_k, grida, 10000, "Calibration A, With Temptation")
+stg.plot_total_k_lorenz(mass_by_k, grida, "Calibration A, With Temptation")
 
 # Plotting comparison: Temptation vs Non-Temptation
-mass_by_k, mass_by_age_k = grp.capital_distributions(n, grida, gridz, distr_mass, k_mass)
-mass_by_k_nt, mass_by_age_k_nt = grp.capital_distributions(n, grida, gridz, distr_mass_nt, k_mass_nt)
+mass_by_k, mass_by_age_k = stg.capital_distributions(n, grida, gridz, distr_mass, k_mass)
+mass_by_k_nt, mass_by_age_k_nt = stg.capital_distributions(n, grida, gridz, distr_mass_nt, k_mass_nt)
 
-grp.compare_total_k_distr(mass_by_k, mass_by_k_nt, grida, bin_size = 2500, description = "Calibration (B)", label1 = "With Temptation", label2 = "Without Temptation", log = False, trim_upper = True, trim_value = 600000)
-grp.compare_total_k_lorenz(mass_by_k, mass_by_k_nt, grida, description = "Calibration (B)", label1  = "With Temptation", label2 = "Without Temptation")
+stg.compare_total_k_distr(mass_by_k, mass_by_k_nt, grida, bin_size = 2500, description = "Calibration (B)", label1 = "With Temptation", label2 = "Without Temptation", log = False, trim_upper = True, trim_value = 600000)
+stg.compare_total_k_lorenz(mass_by_k, mass_by_k_nt, grida, description = "Calibration (B)", label1  = "With Temptation", label2 = "Without Temptation")
 
 # Plotting Asset evolution by quantile
 age_start = 25
-quants = [0.5,1]
+quants = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
-grp.plot_k_evolution(age_start, n, mass_by_age_k, quants, grida, description = "with temptation")
-grp.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description = "without temptation")
+
+stg.plot_k_evolution(age_start, n, mass_by_age_k, quants, grida, description = "with temptation")
+stg.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description = "without temptation")
 
 # Savings Rate
-gross_savings, savings_rate, total_income = grp.savings_and_income(n, grida, choice_a, gridz, mass_z, r)
-gross_savings_nt, savings_rate_nt, total_income_nt = grp.savings_and_income(n, grida, choice_a_nt, gridz, mass_z, r_nt)
 
-grp.plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description = "With Temptation")
-grp.plot_savings_rate(age_start, n, gross_savings_nt, savings_rate_nt, total_income_nt, distr_mass_nt, quants, description = "Without Temptation")
+# Default quants
+# quants = np.concatenate((np.arange(0,1,0.1),np.arange(0.92,1.01,0.02))) 
+# Alternative
+quants = np.arange(0,1.01,0.25)
 
+quant_mean, quant_wt_sd = stg.savings_by_quants(n, grida, choice_a, gridz, r, distr_mass, quants)
+quant_mean_nt, quant_wt_sd_nt = stg.savings_by_quants(n, grida, choice_a_nt, gridz, r_nt, distr_mass_nt, quants)
 
 #%% Calculating some stats
 
