@@ -293,31 +293,65 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     
     excess_KL = np.zeros(shape = (2))
     init_r = np.array([r_low, r_high])
+    window = (init_r[1]-init_r[0])
     
     print("Checking given guesses...")
     # Running first for inital guesses
-    for r in range(len(init_r)):
-        print("\n Testing r:",init_r[r])
-        KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[r], mass_z, transfer, A, temptation, x0)
+    
+    adequate_r = False
+    both_tested = False
+    reduced = False
+    
+    # Testing lower r (and updating upper r when appropriate)
+    while not adequate_r:
+        print("\nTesting r:",init_r[0])
+        KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[0], mass_z, transfer, A, temptation, x0)
         
         L_total = zsum / w # zsum is total salary mass considering the ranges in POF
         KLs = k_total / L_total
         
         if k_total > 0:
-            excess_KL[r] = KLs - KLd
+            excess_KL[0] = KLs - KLd
+            if excess_KL[0] < 0:
+                print("\nLower r checked. \nValue:",init_r[0],"\nCurrent error:",excess_KL[0])
+                adequate_r = True
+                if excess_KL[1] > 0:
+                    both_tested = True
+            else:
+                excess_KL[0] = 0
+                excess_KL[1] = KLs - KLd
+                init_r = np.array([init_r[0] - window/2, init_r[0]])
+                print("\nLower r too high.\nReducing range by half-window to: ", np.round(init_r[0],2),"-", np.round(init_r[1],2))
+                reduced = True
         else:
-            print("Negative capital supply reached. Reasses given r.")
-            excess_KL[r] = -1e10
+            if reduced:
+                print("\nReduced lower r guess too much. Reducing window before next increase.")
+                window = window/2
+            init_r = np.array([init_r[0] + window/2, init_r[1] + window/2])
+            print("\nNegative capital supply reached.\nIncreasing range by half-window to:", np.round(init_r[0],2),"-", np.round(init_r[1],2))
     
-    if excess_KL[0] < 0:
-        print("Lower r checked: OK. Current error:",excess_KL[0])
-    else:
-        print("Lower r inadequate. Current error:",excess_KL[0],". Pick lower r (you may adopt this as your upper)")
+    # Testing upper r, if not done in first part
+    if not both_tested:
+        adequate_r = False
+        while not adequate_r:
+            print("\n Testing r:",init_r[1])
+            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[1], mass_z, transfer, A, temptation, x0)
+            
+            L_total = zsum / w # zsum is total salary mass considering the ranges in POF
+            KLs = k_total / L_total
+            
+            if k_total > 0:
+                excess_KL[1] = KLs - KLd
+                if excess_KL[1] > 0:
+                    print("\nUpper r checked. \nValue:",init_r[1],"\nCurrent error:",excess_KL[1])
+                    adequate_r = True
+                else:
+                    excess_KL[1] = 0
+                    excess_KL[0] = KLs - KLd
+                    init_r = np.array([init_r[1], init_r[1]+ window/2])
+                    print("\nUpper r too low.\nIncreasing range by half-window to: ", np.round(init_r[0],2),"-", np.round(init_r[1],2))
     
-    if excess_KL[1] > 0:
-        print("Upper r checked: OK . Current error:",excess_KL[1])
-    else:
-        print("Upper r inadequate. Current error:",excess_KL[1],". Pick higher r (you may adopt this as your lower)")
+    print("\n----------------------------\nInitial guesses finished.\nRange:", np.round(init_r[0],2),"-", np.round(init_r[1],2))
     
     if (excess_KL[0] < 0) and (excess_KL[1] > 0):
         print("\n--------------------------------------\n        Proceeding to Bissection \n--------------------------------------")
@@ -354,7 +388,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     else:
         return None
     
-    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r
+    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r
 
 @njit
 def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0):
@@ -398,4 +432,63 @@ def calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass):
     print("Gini index calculated:",np.round(gini,decimals=3))
     
     return gini
+
+# Running General Equilibrium results with different betas in order to match
+# a certain level of aggregate capital
+def ge_match_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0):
     
+    # Here, we consider beta0 the one used without temptation. Thus, it is an
+    # upper lower to the beta we are looking for. First I shall test step-incremented
+    # {1,...,m} higher betas until I find one beta_{m} s.t. aggregate capital
+    # is higher than the target. The, I shall execute a bissection with the range
+    # beta_{m-1} - beta{m} until the relative error is below tolerance
+    
+    # Finding the beta_m and conducing bissection
+    m = 1
+    error = 1
+    bissection = False
+    count = 1
+    beta_low = beta0
+    
+    while abs(error) > tol:
+        
+        if not bissection:
+            beta = beta0 + m*step
+        else:
+            beta = (beta_high + beta_low)/2
+        print("\n** Starting iteration ",count,"of capital matching**\n     Current guess:",beta)
+        if count > 1:
+            r_low = init_r[0]
+            r_high = init_r[1]
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r = general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = True, tol = 1e-2, maxit = 10000)
+        
+        error = (k_total - k_target) / k_target
+        
+        if error > 0 and not bissection:
+            print("\nUpper bound for beta found: ",np.round(beta,3),". Error = ",np.round(error,6),".\nProceeding to bissection.")
+            bissection = True
+            beta_high = beta0+step*m
+            beta_low = beta0+step*(m-1)
+        elif error < 0 and not bissection:
+            m = m+1
+            print("\nGE capital still below target. Error = ",np.round(error,6),".\nIncreasing beta to: ",np.round(beta0+step*m,3))
+        elif abs(error) > tol and bissection:
+            print("\Iteration concluded.\nCurrent beta: ",np.round(beta,3),"\nCurrent error: ",np.round(error,6))
+            if error > 0:
+                print("\nDecreasing beta.")
+                beta_high = beta
+            else:
+                print("\nIncreasing beta.")
+                beta_low = beta
+        elif abs(error) < tol and bissection:
+            print("\n\n**Bissection concluded**\nBeta = ",np.round(beta,3),"\nError = ",np.round(error,6))
+        count = count + 1
+    
+    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r)
+    
+    return beta, results
+            
+        
+            
+        
+        

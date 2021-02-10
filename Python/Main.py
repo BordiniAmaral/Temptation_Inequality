@@ -96,17 +96,21 @@ transfer = 0
 x0 = 45*12
 
 A = 1 
-r_low = 0.03
-r_high = 0.1
+r_low = 0.04
+r_high = 0.06
 # Check if using correct mass grid for z (it must be coherent with gridz imported from PNAD)
 mass_z = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
 # Computing a single GE - with Temptation
-KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = True, tol = 1e-2, maxit = 10000)
+KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = True, tol = 1e-2, maxit = 10000)
 
 # Computing a single GE - without Temptation
-KL_nt, w_nt, C_nt, x_nt, y_nt, V_nt, choice_a_nt, distr_mass_nt, k_mass_nt, k_total_nt, c_mass_nt, c_total_nt, r_nt = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = False, tol = 1e-2, maxit = 10000)
+KL_nt, w_nt, C_nt, x_nt, y_nt, V_nt, choice_a_nt, distr_mass_nt, k_mass_nt, k_total_nt, c_mass_nt, c_total_nt, r_nt, init_r_nt = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = False, tol = 1e-2, maxit = 10000)
 
+# Finding equivalent beta to match non-temptation aggregate capital
+step = 0.01
+tol = 1e-3
+beta_equivalent, results_equivalent = olg.ge_match_capital(beta, step, tol, k_total_nt, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0)
 
 #%% Plotting
 
