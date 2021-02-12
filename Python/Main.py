@@ -36,22 +36,25 @@ pof_path = "D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação\POF\R Proj
 pof_df = cb.import_POF_data(pof_path)
 data_x, data_y = cb.select_data(pof_df)
 
-# Selecting a moment grid for calibration. Options: "arbitrary" (adapt code), "percentile5", "percentile10"
-# gridm = cb.create_cons_moment_grid("percentile5")
+# Selecting moment grid (if not quantile, using annual consumption per capita grid)
+# Remember: include zero, leave upper grid open
 
-# Selecting percentile grid for moment calibration
-gridq = np.arange(0,1,0.1)
+# quantile = True # Pick this if selecting moments by sample quantile
+# gridq = np.array([0, 0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99])
+
+quantile = False # Pick this if selecting moments by arbitrary total consumption levels
+gridq = np.array([0, 500, 1000, 1500, 2500, 5000])*12.0
 
 # Starting a Identity weights matrix
 W = np.identity(len(gridq))
 
 # Building which parameters will be explored:
-grid_x0 = np.arange(35*12,65*12,1*12)
-grid_gam1 = np.arange(-2.5,-1.5,0.02)
-grid_gam2 = np.arange(0.80,0.99,0.005)
+grid_x0 = np.arange(70,150,1)*12
+grid_gam1 = np.arange(-1.5,0,0.01)
+grid_gam2 = np.arange(0.70,0.90,0.0025)
 
 # Running the simulations
-sqe = cb.run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W)
+sqe = cb.run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, quantile)
 sol = np.argwhere(sqe == np.min(sqe))
 print("\nParameters found: \n x0:",grid_x0[sol[0][0]]/12,"\n gam1:",grid_gam1[sol[0][1]],"\n gam2:",grid_gam2[sol[0][2]],"\n---------------------------")
 
@@ -86,14 +89,14 @@ grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/5))]),[0
 gridz = values
 Pi = transition
 n = 40
-xi = 0.618
+xi = 0.887
 delta = 0.05
 beta = 0.96
 alpha = 0.4
 sigma_x = 0.21
-sigma_y = 0.22
+sigma_y = 0.267
 transfer = 0
-x0 = 45*12
+x0 = 137*12
 
 A = 1 
 r_low = 0.04
@@ -112,25 +115,26 @@ step = 0.01
 tol = 1e-3
 beta_equivalent, results_equivalent = olg.ge_match_capital(beta, step, tol, k_total_nt, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0)
 
+choice_a_eq = results_equivalent[6]
+distr_mass_eq = results_equivalent[7]
+k_mass_eq = results_equivalent[8]
+r_eq = results_equivalent[12]
+
 #%% Plotting
 
 import StatsAndGraphs as stg
 
-mass_by_k, mass_by_age_k = stg.capital_distributions(n, grida, gridz, distr_mass_nt, k_mass_nt)
-stg.plot_total_k_distr(mass_by_k, grida, 10000, "Calibration A, With Temptation")
-stg.plot_total_k_lorenz(mass_by_k, grida, "Calibration A, With Temptation")
-
-# Plotting comparison: Temptation vs Non-Temptation
+# Plotting comparisons
 mass_by_k, mass_by_age_k = stg.capital_distributions(n, grida, gridz, distr_mass, k_mass)
 mass_by_k_nt, mass_by_age_k_nt = stg.capital_distributions(n, grida, gridz, distr_mass_nt, k_mass_nt)
+mass_by_k_eq, mass_by_age_k_eq = stg.capital_distributions(n, grida, gridz, distr_mass_eq, k_mass_eq)
 
-stg.compare_total_k_distr(mass_by_k, mass_by_k_nt, grida, bin_size = 2500, description = "Calibration (B)", label1 = "With Temptation", label2 = "Without Temptation", log = False, trim_upper = True, trim_value = 600000)
-stg.compare_total_k_lorenz(mass_by_k, mass_by_k_nt, grida, description = "Calibration (B)", label1  = "With Temptation", label2 = "Without Temptation")
+stg.compare_total_k_distr(mass_by_k_eq, mass_by_k_nt, grida, bin_size = 2500, description = "Calibration (B)", label1 = "With Temptation", label2 = "Without Temptation", log = False, trim_upper = True, trim_value = 600000)
+stg.compare_total_k_lorenz(mass_by_k_eq, mass_by_k_nt, grida, description = "Calibration (B)", label1  = "With Temptation", label2 = "Without Temptation")
 
 # Plotting Asset evolution by quantile
 age_start = 25
 quants = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
-
 
 stg.plot_k_evolution(age_start, n, mass_by_age_k, quants, grida, description = "with temptation")
 stg.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description = "without temptation")
@@ -138,16 +142,18 @@ stg.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description 
 # Savings Rate
 
 # Default quants
-# quants = np.concatenate((np.arange(0,1,0.1),np.arange(0.92,1.01,0.02))) 
+quants = np.concatenate((np.arange(0,1,0.1),np.arange(0.92,1.01,0.02))) 
 # Alternative
-quants = np.arange(0,1.01,0.25)
+# quants = np.arange(0,1.01,0.25)
 
-quant_mean, quant_wt_sd = stg.savings_by_quants(n, grida, choice_a, gridz, r, distr_mass, quants)
-quant_mean_nt, quant_wt_sd_nt = stg.savings_by_quants(n, grida, choice_a_nt, gridz, r_nt, distr_mass_nt, quants)
+include_interest = True
+quant_mean_eq, quant_wt_sd_eq = stg.savings_by_quants(n, grida, choice_a_eq, gridz, r_eq, distr_mass_eq, quants, include_interest)
+quant_mean_nt, quant_wt_sd_nt = stg.savings_by_quants(n, grida, choice_a_nt, gridz, r_nt, distr_mass_nt, quants, include_interest)
 
 #%% Calculating some stats
 
 # Wealth Gini
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass)
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass_nt, k_mass_nt)
+olg.calculate_wealth_gini(n, grida, gridz, distr_mass_eq, k_mass_eq)
 

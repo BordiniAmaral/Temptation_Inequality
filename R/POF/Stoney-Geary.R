@@ -24,7 +24,7 @@ library(cowplot)
 library(dtplyr)
 
 #-----------------------------------------------------------------------
-#                     DEFINING EXPORTING PATH
+#                     DEFINING EXPORTING PATH AND DECLARING FUNCTIONS
 #-----------------------------------------------------------------------
 
 # WARNING #
@@ -34,6 +34,32 @@ rm(list = setdiff(ls(), c("consumption_total","morador_count")))
 export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/R Project/Exports (Post-Jan21)"
 setwd(export_path)
 
+y_sim_gamma <- function(x0,gamma1,gamma2,x){
+
+  # Filtering relevant x > x0
+  relevant <- x > x0
+  x <- x[relevant]
+  y <- exp(gamma1 + gamma2*log(x-x0))
+
+  results <- data.frame(x = x,
+                        y = y)
+
+  results <- results %>%
+    mutate(total = x + y,
+           tempt_frac = y / total,
+           x0 = x0)
+
+  return(results)
+}
+
+# Obtaining (sigma_y, xi) from (gamma1, gamma2, sigma_x)
+
+sigy_xi_implied <- function(gamma1, gamma2, sigma_x){
+  sigma_y <- sigma_x / gamma2
+  xi <- exp(sigma_y*gamma1)
+
+  return(c(sigma_y,xi))
+}
 
 #-----------------------------------------------------------------------
 #                     TIDYING EMPIRICAL TEMPTATION DF
@@ -90,24 +116,6 @@ if(trim_outliers){
 #      Plotting curves from gammas and x0 (for arbitrary tests)
 #-----------------------------------------------------------------------
 
-y_sim_gamma <- function(x0,gamma1,gamma2,x){
-
-  # Filtering relevant x > x0
-  relevant <- x > x0
-  x <- x[relevant]
-  y <- exp(gamma1 + gamma2*log(x-x0))
-
-  results <- data.frame(x = x,
-                        y = y)
-
-  results <- results %>%
-    mutate(total = x + y,
-           tempt_frac = y / total,
-           x0 = x0)
-
-  return(results)
-}
-
 x_points <- seq(0,240000,100) # DEFINE X-AXIS RANGE
 
 settings <- list(x0 = 75*12,
@@ -130,15 +138,6 @@ ggplot() +
 #   Running regressions (Cases A,C), inserting GMM result (Case B)
 #-----------------------------------------------------------------------
 
-# Obtaining (sigma_y, xi) from (gamma1, gamma2, sigma_x)
-
-sigy_xi_implied <- function(gamma1, gamma2, sigma_x){
-  sigma_y <- sigma_x / gamma2
-  xi <- exp(sigma_y*gamma1)
-
-  return(c(sigma_y,xi))
-}
-
 # Default external sigma_x (from Issler, Piqueira (2000))
 sigma_x <- 0.21
 
@@ -149,7 +148,7 @@ x0_A <- 0
 upper_trim <- 20000 # monthly per capita
 
 temptation_filtered_regA <- temptation_cross %>%
-  filter(temptation > 0 , total_monthly_pc < upper_trim, total_monthly_pc*12 > x0)
+  filter(temptation > 0 , total_monthly_pc < upper_trim, total_monthly_pc*12 > x0_A)
 
 lm_A <- lm(log(temptation_pc) ~ log(`non-temptation_pc` - x0_A) + 1, temptation_filtered_regA)
 summary(lm_A)
@@ -169,8 +168,8 @@ rm(implied)
 
 # Manually input these values from python GMM script
 
-x0_B <- 45*12                 # INSERT VALUE HERE (remember to *12 for yearly basis)
-gammas_B <- c(-2.2,0.96)      # INSERT VALUE HERE
+x0_B <- 137*12                     # INSERT VALUE HERE (remember to *12 for yearly basis)
+gammas_B <- c(-0.45,0.7875)       # INSERT VALUE HERE
 
 # Obtaining implied sigma_y and xi from gammas, under arbitrary sigma_xxi <- 1
 
@@ -186,7 +185,7 @@ x0_C <- x0_B
 upper_trim <- 20000 # monthly per capita
 
 temptation_filtered_regC <- temptation_cross %>%
-  filter(temptation > 0 , total_monthly_pc < upper_trim, total_monthly_pc*12 > x0)
+  filter(temptation > 0 , total_monthly_pc < upper_trim, total_monthly_pc*12 > x0_C)
 
 lm_C <- lm(log(temptation_pc) ~ log(`non-temptation_pc` - x0_C) + 1, temptation_filtered_regC)
 summary(lm_C)
@@ -226,6 +225,8 @@ ggplot(temptation_filtered_reg, aes(x = log(`non-temptation_pc` - x0), y = log(t
 #-----------------------------------------------------------------------
 #                   Comparing solutions A, B and C
 #-----------------------------------------------------------------------
+
+x_points <- seq(0,240000,100) # DEFINE X-AXIS RANGE
 
 # Solution A: from regression with x0
 
@@ -277,8 +278,8 @@ ggplot() +
         legend.key.size = unit(1.5,"cm"),
         axis.text=element_text(size=12),
         axis.title=element_text(size=14)) +
-  guides(color=guide_legend(override.aes=list(fill=NA))) +
-  ggsave(glue("Calibrations_ABC_Tempt_frac96.png"), width = 10, height = 6.5)
+  guides(color=guide_legend(override.aes=list(fill=NA))) #+
+  #ggsave(glue("Calibrations_ABC_Tempt_frac96.png"), width = 10, height = 6.5)
 
 # Comparative graph for log(tempt) vs log(non-tempt)
 
@@ -302,6 +303,6 @@ ggplot() +
         axis.text=element_text(size=12),
         axis.title=element_text(size=14)) +
   scale_x_continuous(breaks = seq(2,14,2)) +
-  scale_y_continuous(breaks = seq(2,14,2)) +
-  ggsave(glue("Temptation - No-Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
+  scale_y_continuous(breaks = seq(2,14,2)) #+
+  #ggsave(glue("Temptation - No-Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
 

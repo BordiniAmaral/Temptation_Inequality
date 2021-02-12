@@ -16,11 +16,14 @@ import numpy as np
 import pandas as pd
 
 def import_POF_data(file_path):
-    
-    
     pof_df = pd.read_csv(file_path, sep = ";")
-    
     return pof_df
+
+def select_data(pof_df):
+    data_x = pof_df["non-temptation_pc"].to_numpy()
+    data_y = pof_df["temptation_pc"].to_numpy()
+    
+    return data_x, data_y
 
 @njit
 def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gridm, consumpt, cons_bin, y_data_sel_sum, W):
@@ -28,9 +31,10 @@ def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gri
     print("------------------------ \n   Current x0:",x0,"  \n------------------------\n")
     sqe = np.zeros(shape = (len(grid_gam1), len(grid_gam2)))
     counter = 0
+    gam2_start = np.int32(0)
     
     for gam1 in range(len(grid_gam1)):
-        for gam2 in range(len(grid_gam2)):
+        for gam2 in range(gam2_start, len(grid_gam2)):
             
             y_sim = np.zeros(shape = (len(data_x)))
             x_sim = np.zeros(shape = (len(data_x)))
@@ -43,7 +47,19 @@ def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gri
                     y_sim[x] = (data_x[x] + data_y[x]) - x_sim[x]
             
             sqe[gam1,gam2] = calculate_sqe(y_sim, data_x, data_y, gridm, cons_bin, y_data_sel_sum, W)[0]
-                    
+        
+            if gam2 > gam2_start+1:
+                # Checking if gam2 passed minimum by 2 steps at least
+                if sqe[gam1,gam2] > sqe[gam1,gam2-2]:
+                    sqe[gam1,:gam2_start] = np.Inf
+                    sqe[gam1,(gam2+1):] = np.Inf
+                    gam2_start = np.max(np.array([gam2 - 3, np.int64(0)]))
+                    break
+                # Checking if sigy did not reach minimum
+                elif gam2 == len(grid_gam2):
+                    sqe[gam1,:gam2_start] = np.Inf
+                    gam2_start = np.max(np.array([gam2 - 3, np.int64(0)]))
+        
         progress = np.floor((gam1/len(grid_gam1))*100)
         if (progress / 20) > counter :
             counter = counter + 1
@@ -91,61 +107,15 @@ def Newton(f, df, x_init, e, maxit, c, gam1, gam2, x0):
     print("\n C evaluated: ", c,"\n gam1 evaluated: ", gam1,"\n gam2 evaluated: ", gam2)
     return None
 
-def create_cons_moment_grid(which):
-    
-    if which == "arbitrary":
-        grid1 = np.arange(0, 1000*12, 200*12)
-        grid2 = np.arange(1000*12, 2600*12, 400*12)
-        grid3 = np.arange(2600*12, 10100*12,1500*12)
-        grid4 = np.arange(10100*12, 20000*12, 5000*12)
-        gridm = np.concatenate((grid1,grid2,grid3,grid4))
-    
-    if which == "percentile5":
-        gridm = np.array([0,
-                          144.36,
-                          201.56,
-                          251.27,
-                          297.58,
-                          345.78,
-                          392.88,
-                          445.24,
-                          499.12,
-                          556.54,
-                          620.43,
-                          688.46,
-                          767.22,
-                          859.76,
-                          968.87,
-                          1100.25,
-                          1265.36,
-                          1491.37,
-                          1863.56,
-                          2596.38])*12
-    
-    if which == "percentile10":
-        gridm = np.array([0,
-                          201.56,
-                          297.58,
-                          392.88,
-                          499.12,
-                          620.43,
-                          767.22,
-                          968.87,
-                          1265.36,
-                          1863.56,
-                          2596.38])*12
-        
-    return gridm
-
 @njit
-def run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W):
+def run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, quantile):
     
     # Starting timer
     # start_time = time.time()
     print("Running initial calculations... \n")
     
     sqe = np.zeros(shape = (len(grid_x0), len(grid_gam1), len(grid_gam2)))
-    consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, grid_x0)
+    consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, grid_x0, quantile)
     
     print("Proceeding to simulations... \n")
     for x0 in range(len(grid_x0)):
@@ -196,12 +166,6 @@ def run_two_steps(grid_sigx, grid_sigy, grid_x0, data_x, data_y, gridq, grid_xi)
 
     return sqe_I, sqe_W, W_new, Omega
 
-def select_data(pof_df):
-    data_x = pof_df["non-temptation_pc"].to_numpy()
-    data_y = pof_df["temptation_pc"].to_numpy()
-    
-    return data_x, data_y
-
 @njit # THIS FUNCTION HAS NOT BEEN REVISED!!
 def recalculate_weights(m_errors):
     Omega = (1/len(m_errors))* (m_errors.reshape((len(m_errors),1)) @ m_errors.reshape((1,len(m_errors))))
@@ -230,7 +194,7 @@ def simulate_single(sigx, sigy, x0, data_x, data_y, gridq, xi, W, grid_x0):
     return sqe, m_errors
     
 @njit
-def initial_computations(data_x, data_y, gridq, grid_x0):
+def initial_computations(data_x, data_y, gridq, grid_x0, quantile):
     
     consumpt = data_x + data_y
     
@@ -241,10 +205,13 @@ def initial_computations(data_x, data_y, gridq, grid_x0):
     y_data_sel_sum = np.zeros(shape = (len(gridq)))
     
     # Creating grid of moments
-    gridm = np.quantile(consumpt,gridq)
+    if quantile:
+        gridm = np.quantile(consumpt,gridq)
+    if not quantile:
+        gridm = gridq
     
     for c in range(len(consumpt)): 
-            cons_bin[c] = np.int64(np.sum(gridm <= consumpt[c]) - 1)
+        cons_bin[c] = np.int64(np.sum(gridm <= consumpt[c]) - 1)
             
     for b in range(len(gridm)):
         y_data_sel_sum[b] = np.sum(data_y[cons_bin == b])

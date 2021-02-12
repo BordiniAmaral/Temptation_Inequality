@@ -243,7 +243,11 @@ savings_by_residual <- all_consumption %>%
 #                     SAVING TABLES
 #-----------------------------------------------------------------------
 
- setwd(export_path)
- fwrite(consumption_total, "consumption_total.csv", sep = ";")
- fwrite(savings_by_residual, "savings_by_residual.csv", sep = ";")
- fwrite(morador_count, "morador_count.csv", sep = ";")
+setwd(export_path)
+fwrite(consumption_total, "consumption_total.csv", sep = ";")
+write(savings_by_residual, "savings_by_residual.csv", sep = ";")
+fwrite(morador_count, "morador_count.csv", sep = ";")
+
+#-----------------------------------------------------------------------
+#                     RASCUNHO
+#-----------------------------------------------------------------------
