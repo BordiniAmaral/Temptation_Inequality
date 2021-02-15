@@ -153,10 +153,14 @@ quant_mean_nt, quant_wt_sd_nt = stg.savings_by_quants(n, grida, choice_a_nt, gri
 
 # Comparing lifecycle average savings
 age_start = 25
-quants = np.array([0,0.9,0.99,1])
+quants = np.array([0,0.5,0.9,0.99,1])
 include_interest = True
-stg.compare_savings_rate(age_start, n, quants, grida, gridz, r_nt, r_eq, choice_a_nt, choice_a_eq, distr_mass_nt, distr_mass_eq, include_interest, description1 = "No Temptation", description2 = "With Temptation")
+n_select = n-5 # Dissavings at the end of life are huge, making visualization poor
 
+stg.compare_savings_rate(age_start, n_select, quants, grida, gridz, r_nt, r_eq, choice_a_nt, choice_a_eq, distr_mass_nt, distr_mass_eq, include_interest, description1 = "No Temptation", description2 = "With Temptation")
+quants = np.array([0.5,0.9,0.99])
+stg.compare_k_evolution(age_start,n,mass_by_age_k_nt, mass_by_age_k_eq, quants, grida, description1 = "No Temptation", description2 = "With Temptation")
+0.05
 #%% Calculating some stats
 
 # Wealth Gini

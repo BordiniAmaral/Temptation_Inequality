@@ -16,6 +16,19 @@
 library(tidyverse)
 
 #-----------------------------------------------------------------------
+#                     Preparing some data
+#-----------------------------------------------------------------------
+
+# Getting household age reference, adding to savings by residual
+hh_age <- morador_aggr %>%
+  filter(V0306 == 1) %>%
+  select(hh_id,V0403) %>%
+  rename(age = V0403)
+
+savings_by_residual <- savings_by_residual %>%
+  left_join(hh_age, by = c("id"="hh_id"))
+
+#-----------------------------------------------------------------------
 #                     Stats by quantile group
 #-----------------------------------------------------------------------
 
@@ -37,3 +50,53 @@ savings_summarised <- savings_with_quantile %>%
   summarise(mean = sum(gross_savings_pc)/sum(income_pc),
             stdv = sd(savings_rate),
             wt_stdv = sqrt(sum(income_pc/sum(income_pc)*(savings_rate-mean)^2)))
+
+#-----------------------------------------------------------------------
+#                     Stats by age
+#-----------------------------------------------------------------------
+
+# Summarising savings by age
+quant_by_five <- savings_by_residual %>%
+  filter(age >= 25, age <=65) %>%
+  mutate(rounded_five = floor(age/5)*5) %>%
+  group_by(rounded_five) %>%
+  summarise(q99 = quantile(income_pc, probs = 0.99, type = 8),
+            q90 = quantile(income_pc, probs = 0.90, type = 8),
+            q50 = quantile(income_pc, probs = 0.50, type = 8),
+            q25 = quantile(income_pc, probs = 0.25, type = 8),
+            q0 = 0) %>%
+  pivot_longer(cols = starts_with("q"), names_to = "quant")
+
+# These below are not a very smart step, but it does the trick and I am tired
+# to write them better
+
+# Using more granular age measure
+savings_by_age <- savings_by_residual %>%
+  filter(age >= 25, age <=65) %>%
+  mutate(rounded_five = floor(age/5)*5) %>%
+  left_join(quant_by_five, by = "rounded_five") %>%
+  group_by(id) %>%
+  filter(income_pc > value) %>%
+  filter(value == max(value)) %>%
+  ungroup()
+
+ggplot(savings_by_age %>% filter(quant != "q0"))+
+  geom_smooth(aes(x = age, y = savings_rate, color = quant), method = "loess")+
+  coord_cartesian(xlim = c(25,65), ylim = c(-2, 1))
+
+# Using ages grouped by five years
+savings_by_five <- savings_by_residual %>%
+  filter(age >= 25, age <=65) %>%
+  mutate(rounded_five = floor(age/5)*5) %>%
+  left_join(quant_by_five, by = "rounded_five") %>%
+  group_by(id) %>%
+  filter(income_pc > value) %>%
+  filter(value == max(value)) %>%
+  ungroup() %>%
+  group_by(rounded_five, quant) %>%
+  summarise(mean = sum(gross_savings_pc)/sum(income_pc),
+            stdv = sd(savings_rate),
+            wt_stdv = sqrt(sum(income_pc/sum(income_pc)*(savings_rate-mean)^2)))
+
+ggplot(savings_by_five %>% filter(quant != "q0"))+
+  geom_line(aes(x = rounded_five, y = mean, color = quant))

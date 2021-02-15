@@ -180,8 +180,9 @@ def plot_k_evolution(age_start,n,mass_by_age_k, quants, grida, description):
     
 def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grida, description1, description2):
     
-    cumulative_per_age1 = np.cumsum(mass_by_age_k1,axis = 1) * n
-    cumulative_per_age2 = np.cumsum(mass_by_age_k2,axis = 1) * n
+    cohort_mass = np.sum(mass_by_age_k1[0,:])
+    cumulative_per_age1 = np.round(np.cumsum(mass_by_age_k1,axis = 1) / cohort_mass , 4)
+    cumulative_per_age2 = np.round(np.cumsum(mass_by_age_k2,axis = 1) / cohort_mass , 4)
     
     # Finding indexes for each quantile at each age
     quant_index1 = np.zeros(shape = (len(quants),n))
@@ -197,16 +198,26 @@ def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grid
     
     # Plotting
     age_tick = np.arange(age_start,age_start+n)
+    color = iter(plt.cm.rainbow(np.linspace(0,1,len(quants))))
     
     fig = plt.figure(figsize=(10,6))
     ax = fig.add_subplot(111)
     for q in range(len(quants)):
-        ax.plot(age_tick,quant_value1[q,:], label = description1+" "+str(quants[q]),linestyle = '--')
-        ax.plot(age_tick,quant_value2[q,:], label = description2+" "+str(quants[q]))
-    ax.legend(loc='upper left')
-    fig.suptitle('Asset evolution by quantile')
+        c = next(color)
+        label = str(np.int(quants[q]*100)) + "%"
+        ax.plot(age_tick,quant_value1[q,:], color = c, linestyle = '-', label = label)
+        ax.plot(age_tick,quant_value2[q,:], color = c, linestyle = '--')
+        
+    handles, labels = ax.get_legend_handles_labels()
+    display = list(range(0,len(quants)))
+    Artist1 = plt.Line2D((0,1),(0,0), color='k', linestyle='-')
+    Artist2 = plt.Line2D((0,1),(0,0), color='k', linestyle='--')
+    ax.legend([handle for i,handle in enumerate(handles) if i in display]+[Artist1,Artist2], \
+              [label for i,label in enumerate(labels) if i in display]+[description1, description2], loc='upper left')
+    
+    fig.suptitle('Wealth evolution by wealth quantile (per capita)')
     ax.set_xlabel('Household head age')
-    ax.set_ylabel('Household asset position [BRL]')
+    ax.set_ylabel('Household wealth per capita [BRL]')
     ax.get_yaxis().set_major_formatter(
         mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
     fig.show()
@@ -312,7 +323,6 @@ def savings_rate_by_quants_age(n, grida, choice_a, gridz, r, distr_mass, quants,
     
     return quant_age_value
 
-# Should automatize to obtain savings before plotting
 def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description, include_interest):
     
     quant_value = savings_rate_by_quants_age(n, gross_savings, total_income, distr_mass, quants, include_interest)

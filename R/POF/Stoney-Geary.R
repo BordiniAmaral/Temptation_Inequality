@@ -262,7 +262,7 @@ ggplot() +
   geom_line(data = testeC, aes(x = total/12, y = tempt_frac, color = "(C)"), linetype = "dashed", size = 1.2) +
   geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac, color = "Data")) +
   # geom_vline(xintercept = gridm_v, linetype = "dashed", linesize = 0.5) +
-  coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.12)) +
+  coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.12)) +
   scale_color_manual(values = c(
     'Data' = 'blue',
     '(A)' = 'black',
@@ -278,16 +278,16 @@ ggplot() +
         legend.key.size = unit(1.5,"cm"),
         axis.text=element_text(size=12),
         axis.title=element_text(size=14)) +
-  guides(color=guide_legend(override.aes=list(fill=NA))) #+
-  #ggsave(glue("Calibrations_ABC_Tempt_frac96.png"), width = 10, height = 6.5)
+  guides(color=guide_legend(override.aes=list(fill=NA))) +
+  ggsave(glue("Calibrations_ABC_Tempt_frac96.png"), width = 10, height = 6.5)
 
 # Comparative graph for log(tempt) vs log(non-tempt)
 
 ggplot() +
   geom_point(data = temptation_filtered, aes(x = log(`non-temptation_pc`), y = log(temptation_pc)), size = 0.7, colour = "grey51") +
   geom_smooth(data = temptation_filtered, aes(x = log(`non-temptation_pc`), y = log(temptation_pc), colour = "(A)"), size = 1.2, model = 'lm', formula = y ~ x +1, se = FALSE) +
-  geom_line(data = testeB, aes(x = log(x), y = log(y), colour = "(B)"), size = 1.2)+
-  geom_line(data = testeC, aes(x = log(x), y = log(y), colour = "(C)"), size = 1.2)+
+  geom_line(data = testeB %>% filter(y>0), aes(x = log(x), y = log(y), colour = "(B)"), size = 1.2)+
+  geom_line(data = testeC %>% filter(y>0), aes(x = log(x), y = log(y), colour = "(C)"), size = 1.2)+
   coord_cartesian(xlim = c(4,14), ylim = c(2, 10)) +
   labs(title = "Temptation by Consumption level - Calibrations (A), (B) and (C)",
        x = "(log) Non-temptation Consumption [R$]",
@@ -303,6 +303,6 @@ ggplot() +
         axis.text=element_text(size=12),
         axis.title=element_text(size=14)) +
   scale_x_continuous(breaks = seq(2,14,2)) +
-  scale_y_continuous(breaks = seq(2,14,2)) #+
-  #ggsave(glue("Temptation - No-Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
+  scale_y_continuous(breaks = seq(2,14,2)) +
+  ggsave(glue("Temptation - No-Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
 
