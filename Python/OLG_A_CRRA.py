@@ -28,7 +28,6 @@ def calculate_KL(r, delta, alpha, A):
 def calculate_w(alpha, A, KL):
     return (1-alpha)*A*KL**alpha
 
-
 # Computes aggregate Labor measure
 @njit
 def calculate_labor(gridz, mass_z, n):

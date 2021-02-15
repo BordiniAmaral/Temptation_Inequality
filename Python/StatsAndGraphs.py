@@ -271,9 +271,9 @@ def savings_by_quants(n, grida, choice_a, gridz, r, distr_mass, quants, include_
     
     return quant_mean, quant_wt_sd
 
-def savings_by_quants_age(n, grida, choice_a, gridz, r, distr_mass, quants):
+def savings_rate_by_quants_age(n, grida, choice_a, gridz, r, distr_mass, quants, include_interest):
     
-    gross_savings, savings_rate, total_income = savings_and_income(n, grida, choice_a, gridz, r)
+    gross_savings, savings_rate, total_income = savings_and_income(n, grida, choice_a, gridz, r, include_interest)
     
     cohort_mass = np.sum(distr_mass[0,:,:])
     
@@ -313,9 +313,9 @@ def savings_by_quants_age(n, grida, choice_a, gridz, r, distr_mass, quants):
     return quant_age_value
 
 # Should automatize to obtain savings before plotting
-def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description):
+def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, distr_mass, quants, description, include_interest):
     
-    quant_value = savings_by_quants_age(n, gross_savings, total_income, distr_mass, quants)
+    quant_value = savings_rate_by_quants_age(n, gross_savings, total_income, distr_mass, quants, include_interest)
     
      # Plotting
     age_tick = np.arange(age_start,age_start+n)
@@ -337,4 +337,37 @@ def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, d
     ax.set_ylabel('Average savings rate')
     fig.show()
 
+def compare_savings_rate(age_start, n, quants, grida, gridz, r1, r2, choice_a1, choice_a2, distr_mass1, distr_mass2, include_interest, description1, description2):
     
+    quant_value1 = savings_rate_by_quants_age(n, grida, choice_a1, gridz, r1, distr_mass1, quants, include_interest)
+    quant_value2 = savings_rate_by_quants_age(n, grida, choice_a2, gridz, r2, distr_mass2, quants, include_interest)
+    
+     # Plotting
+    age_tick = np.arange(age_start,age_start+n)
+    color = iter(plt.cm.rainbow(np.linspace(0,1,len(quants))))
+    
+    fig = plt.figure(figsize=(10,6))
+    ax = fig.add_subplot(111)
+    for q in range(len(quants)):
+        c = next(color)
+        if q == 0:
+            low = str(0)
+        else:
+            low = str(np.int(quants[q-1]*100))
+        top = str(np.int(quants[q]*100))
+        label = low + " - " + top + "%"
+        ax.plot(age_tick, np.round(quant_value1[q,:], decimals = 2), label = label, color = c, linestyle = "-" )
+        ax.plot(age_tick, np.round(quant_value2[q,:], decimals = 2), color = c, linestyle = "--")
+    ax.plot(age_tick,np.repeat(0,n), linestyle = '--', color= 'black', linewidth=0.9)
+    
+    handles, labels = ax.get_legend_handles_labels()
+    display = list(range(1,len(quants)))
+    Artist1 = plt.Line2D((0,1),(0,0), color='k', linestyle='-')
+    Artist2 = plt.Line2D((0,1),(0,0), color='k', linestyle='--')
+    ax.legend([handle for i,handle in enumerate(handles) if i in display]+[Artist1,Artist2], \
+              [label for i,label in enumerate(labels) if i in display]+[description1, description2], loc='lower left')
+    
+    fig.suptitle('Savings rate by total income quantile')
+    ax.set_xlabel('Household head age')
+    ax.set_ylabel('Average savings rate')
+    fig.show()

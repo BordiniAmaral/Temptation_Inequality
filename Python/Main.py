@@ -43,15 +43,15 @@ data_x, data_y = cb.select_data(pof_df)
 # gridq = np.array([0, 0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99])
 
 quantile = False # Pick this if selecting moments by arbitrary total consumption levels
-gridq = np.array([0, 500, 1000, 1500, 2500, 5000])*12.0
+gridq = np.array([0, 1000, 2000, 3000, 4000, 5000])*12.0
 
 # Starting a Identity weights matrix
 W = np.identity(len(gridq))
 
 # Building which parameters will be explored:
-grid_x0 = np.arange(70,150,1)*12
-grid_gam1 = np.arange(-1.5,0,0.01)
-grid_gam2 = np.arange(0.70,0.90,0.0025)
+grid_x0 = np.arange(150,250,1)*12
+grid_gam1 = np.arange(-0.3,0.5,0.01)
+grid_gam2 = np.arange(0.65,0.75,0.0025)
 
 # Running the simulations
 sqe = cb.run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, quantile)
@@ -89,14 +89,14 @@ grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/5))]),[0
 gridz = values
 Pi = transition
 n = 40
-xi = 0.887
+xi = 1.072
 delta = 0.05
 beta = 0.96
 alpha = 0.4
 sigma_x = 0.21
-sigma_y = 0.267
+sigma_y = 0.29
 transfer = 0
-x0 = 137*12
+x0 = 210*12
 
 A = 1 
 r_low = 0.04
@@ -136,7 +136,7 @@ stg.compare_total_k_lorenz(mass_by_k_eq, mass_by_k_nt, grida, description = "Cal
 age_start = 25
 quants = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
-stg.plot_k_evolution(age_start, n, mass_by_age_k, quants, grida, description = "with temptation")
+stg.plot_k_evolution(age_start, n, mass_by_age_k_eq, quants, grida, description = "with temptation")
 stg.plot_k_evolution(age_start, n, mass_by_age_k_nt, quants, grida, description = "without temptation")
 
 # Savings Rate
@@ -146,9 +146,16 @@ quants = np.concatenate((np.arange(0,1,0.1),np.arange(0.92,1.01,0.02)))
 # Alternative
 # quants = np.arange(0,1.01,0.25)
 
+# Checking some stats
 include_interest = True
 quant_mean_eq, quant_wt_sd_eq = stg.savings_by_quants(n, grida, choice_a_eq, gridz, r_eq, distr_mass_eq, quants, include_interest)
 quant_mean_nt, quant_wt_sd_nt = stg.savings_by_quants(n, grida, choice_a_nt, gridz, r_nt, distr_mass_nt, quants, include_interest)
+
+# Comparing lifecycle average savings
+age_start = 25
+quants = np.array([0,0.9,0.99,1])
+include_interest = True
+stg.compare_savings_rate(age_start, n, quants, grida, gridz, r_nt, r_eq, choice_a_nt, choice_a_eq, distr_mass_nt, distr_mass_eq, include_interest, description1 = "No Temptation", description2 = "With Temptation")
 
 #%% Calculating some stats
 

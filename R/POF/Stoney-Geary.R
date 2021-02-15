@@ -27,7 +27,7 @@ library(dtplyr)
 #                     DEFINING EXPORTING PATH AND DECLARING FUNCTIONS
 #-----------------------------------------------------------------------
 
-# WARNING #
+#' **WARNING** '#
 # Cleaning undesired objects
 rm(list = setdiff(ls(), c("consumption_total","morador_count")))
 
@@ -38,8 +38,8 @@ y_sim_gamma <- function(x0,gamma1,gamma2,x){
 
   # Filtering relevant x > x0
   relevant <- x > x0
-  x <- x[relevant]
-  y <- exp(gamma1 + gamma2*log(x-x0))
+  zero_index <- x <= x0
+  y <- c(x[zero_index]*0,exp(gamma1 + gamma2*log(x[relevant]-x0)))
 
   results <- data.frame(x = x,
                         y = y)
@@ -168,8 +168,8 @@ rm(implied)
 
 # Manually input these values from python GMM script
 
-x0_B <- 137*12                     # INSERT VALUE HERE (remember to *12 for yearly basis)
-gammas_B <- c(-0.45,0.7875)       # INSERT VALUE HERE
+x0_B <- 210*12                     # INSERT VALUE HERE (remember to *12 for yearly basis)
+gammas_B <- c(0.24,0.725)       # INSERT VALUE HERE
 
 # Obtaining implied sigma_y and xi from gammas, under arbitrary sigma_xxi <- 1
 
@@ -262,7 +262,7 @@ ggplot() +
   geom_line(data = testeC, aes(x = total/12, y = tempt_frac, color = "(C)"), linetype = "dashed", size = 1.2) +
   geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac, color = "Data")) +
   # geom_vline(xintercept = gridm_v, linetype = "dashed", linesize = 0.5) +
-  coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.12)) +
+  coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.12)) +
   scale_color_manual(values = c(
     'Data' = 'blue',
     '(A)' = 'black',
