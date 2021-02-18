@@ -67,24 +67,20 @@ print("\nParameters found: \n x0:",grid_x0[sol[0][0]]/12,"\n gam1:",grid_gam1[so
 import OLG_A_CRRA as olg
 
 # Example gridspace...
-grida_space = np.zeros(200)
+grida_space = np.zeros(300)
 for a in range(len(grida_space)):
     if a == 0: 
-        grida_space[a] = 100
+        grida_space[a] = 50
     elif a == 1:
-        grida_space[a] = 200
-    elif a < 5:
-        grida_space[a] = grida_space[a-1]*1.5
-    elif a < 8:
-        grida_space[a] = grida_space[a-1]*1.4
-    elif a < 15:
-        grida_space[a] = grida_space[a-1]*1.2
-    elif a < 20:
-        grida_space[a] = grida_space[a-1]*1.1
+        grida_space[a] = 100
+    elif a < 11:
+        grida_space[a] = grida_space[a-1]+100
+    elif a < 61:
+        grida_space[a] = grida_space[a-1]+200
     else:
-        grida_space[a] = grida_space[a-1]*1.03
+        grida_space[a] = grida_space[a-1]*1.02
 
-grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/5))]),[0],grida_space))
+grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/150))]),[0],grida_space))
 
 gridz = values
 Pi = transition
@@ -160,7 +156,7 @@ n_select = n-5 # Dissavings at the end of life are huge, making visualization po
 stg.compare_savings_rate(age_start, n_select, quants, grida, gridz, r_nt, r_eq, choice_a_nt, choice_a_eq, distr_mass_nt, distr_mass_eq, include_interest, description1 = "No Temptation", description2 = "With Temptation")
 quants = np.array([0.5,0.9,0.99])
 stg.compare_k_evolution(age_start,n,mass_by_age_k_nt, mass_by_age_k_eq, quants, grida, description1 = "No Temptation", description2 = "With Temptation")
-0.05
+
 #%% Calculating some stats
 
 # Wealth Gini

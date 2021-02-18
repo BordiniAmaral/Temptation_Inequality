@@ -41,95 +41,6 @@ def calculate_labor(gridz, mass_z, n):
     
     return np.sum(L_mass)
 
-'''
-@njit
-def partial_sol_baseline(n, beta, alpha, Pi, gridz, grida, x, y, x_last, y_last, sigma_x, sigma_y, xi, x0, temptation = True):
-    
-    print("\n Computing partial equilibrium baseline solution \n \n")
-    # Defining value function space V(period, productivity, current asset)
-    V = np.zeros(shape = (n, len(gridz), len(grida)))
-    
-    # Defining regular utility and temptation utility space U(x) and T(y)
-    U = np.zeros(shape = (len(gridz), len(grida), len(grida)))
-    T = np.zeros(shape = (len(gridz), len(grida), len(grida)))
-    
-    for z in range(len(gridz)):
-        for a1 in range(len(grida)):
-            for a2 in range(len(grida)):
-                U[z,a1,a2] = tpt.calculate_U(x[z,a1,a2], sigma_x, x0)
-                T[z,a1,a2] = tpt.calculate_T(y[z,a1,a2], sigma_y, xi)
-    
-    # Defining last period utilities 
-    U_last = np.zeros(shape = (len(grida)))
-    T_last = np.zeros(shape = (len(grida)))
-    
-    for a in range(len(grida)):
-        U_last[a] = tpt.calculate_U(x_last[a], sigma_x, x0)
-        T_last[a] = tpt.calculate_T(y_last[a], sigma_y, xi)
-    
-    # Creating choice objects choice(period, productivity, current asset)
-    choice_a = np.zeros(shape = (n, len(gridz), len(grida)))
-    
-    # Creating options (productivity, current asset, next asset)
-    # from which to draw the maximum
-    Aux = np.zeros(shape = (len(gridz), len(grida), len(grida)))
-    
-    # Creating feasible a2 indicator
-    # Allows for adding borrowing constraints, if desired!
-    possible = U > 0
-    possible_last = U_last > 0
-    
-    for period in range(n-1, -1, -1):
-        
-        # Last period has no labor
-        if period == n-1:
-            for a in range(len(grida)):
-                V[period, :, a] = U_last[a] + T_last[a]
-                choice_a[period, :, a] = np.argwhere(grida == 0)
-        
-        # Previous-than-last period sees the next as the final
-        elif period == n-2:
-            for a2 in range(len(grida)):
-                if not(possible_last[a2]):
-                    Aux[:,:,a2] = 0
-                else:
-                    V_next = V[period+1,1,a2] - T_last[a2]*temptation
-                    for z1 in range(len(gridz)):
-                        for a1 in range(len(grida)):
-                            if possible[z1,a1,a2]:
-                                Aux[z1,a1,a2] = U[z1,a1,a2] + T[z1,a1,a2] + beta*V_next
-                            else:
-                                Aux[z1,a1,a2] = 0
-            
-            for z1 in range(len(gridz)):
-                for a1 in range(len(grida)):
-                    V[period,z1,a1] = max(Aux[z1,a1,:])
-                    choice_a[period,z1,a1] = np.argmax(Aux[z1,a1,:])
-                        
-        # Other periods occur normally
-        else:
-            for a2 in range(len(grida)):
-                for z1 in range(len(gridz)):
-                    if min(V[period+1,Pi[z1,:]>0,a2]) == 0: #checking next period's feasibility
-                        Aux[z1,:,a2] = 0
-                    else:
-                        V_next = 0
-                        for z2 in range(len(gridz)):
-                            V_next = V_next + Pi[z1,z2]*(V[period+1,z2,a2] - T[z2,a2,int(choice_a[period+1,z2,a2])]*temptation)
-                        for a1 in range(len(grida)):
-                            if possible[z1,a1,a2]:
-                                Aux[z1,a1,a2] = U[z1,a1,a2] + T[z1,a1,a2] + beta*V_next
-                            else:
-                                Aux[z1,a1,a2] = 0
-            
-            for z1 in range(len(gridz)):
-                for a1 in range(len(grida)):
-                    V[period,z1,a1] = max(Aux[z1,a1,:])
-                    choice_a[period,z1,a1] = np.argmax(Aux[z1,a1,:])
-    
-    return V, choice_a
-'''
-
 @njit
 def compute_utility_grids(x,y,grida,gridz,n,sigma_x,sigma_y,xi,x0, bound):
     
@@ -169,6 +80,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
     # Creating feasible a2 indicator
     # Allows for adding borrowing constraints, if desired!
     possible = U > -np.Inf
+    not_possible = U == -np.Inf
     
     zero_asset_index = np.int64(np.argwhere(grida == 0)[0][0])
     
@@ -197,16 +109,12 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                         else:
                             V_next = V_next + Pi[z1,z2]*(V[period+1,z2,a2] - T[z2,a2,int(choice_a[period+1,z2,a2]),period]*temptation)
                     
-                    if V[period+1, 0, a2] == -np.Inf:
-                        Aux[z1,:,a2] = -np.Inf
-                        continue
+                    # Excluding impossible steps straightforwardly
+                    a_possible_index = np.sum(not_possible[z1,:,a2,period])
+                    Aux[z1,:a_possible_index,a2] = -np.Inf
                     
-                    else:
-                        for a1 in range(len(grida)):
-                            if not possible[z1,a1,a2,period]:
-                                Aux[z1,a1,a2] = -np.Inf
-                            else:
-                                Aux[z1,a1,a2] = U[z1,a1,a2,period] + T[z1,a1,a2,period] + beta*V_next
+                    for a1 in range(a_possible_index,len(grida)):
+                        Aux[z1,a1,a2] = U[z1,a1,a2,period] + T[z1,a1,a2,period] + beta*V_next
                 
             for z1 in range(len(gridz)):
                 for a1 in range(len(grida)):
@@ -434,6 +342,10 @@ def calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass):
 
 # Running General Equilibrium results with different betas in order to match
 # a certain level of aggregate capital
+
+# Need to improve this: The match WILL result in the same r (thus, this r is known)
+# All you need to run is several general equilibriums with the same r, ranging
+# the betas. Please implement this.
 def ge_match_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0):
     
     # Here, we consider beta0 the one used without temptation. Thus, it is an

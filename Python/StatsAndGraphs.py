@@ -20,13 +20,14 @@ from scipy.interpolate import make_interp_spline
 
 def capital_distributions(n, grida, gridz, distr_mass, k_mass):
     
+    lifecycle_mass = np.sum(distr_mass[:n,:,:])
     mass_by_k = np.zeros(shape = len(grida))
     mass_by_age_k = np.zeros(shape = (n, len(grida)))
     
     for a in range(len(grida)):
-        mass_by_k[a] = np.sum(distr_mass[:,:,a])
+        mass_by_k[a] = np.sum(distr_mass[:n,:,a]) / lifecycle_mass
         for period in range(n):
-            mass_by_age_k[period,a] = np.sum(distr_mass[period,:,a])
+            mass_by_age_k[period,a] = np.sum(distr_mass[period,:,a]) / lifecycle_mass
     
     return mass_by_k, mass_by_age_k
 
@@ -307,7 +308,7 @@ def savings_rate_by_quants_age(n, grida, choice_a, gridz, r, distr_mass, quants,
         gross_savings_ordered_by_income = flat_savings[flat_income_order]
         
         # Getting the cumulative mass in each age, ordered by income
-        cumulative_mass = np.cumsum(mass_ordered_by_income) / cohort_mass
+        cumulative_mass = np.round(np.cumsum(mass_ordered_by_income) / cohort_mass, 5)
         
         for q in range(len(quants)):
             quant_age_index[q,age] = np.sum(cumulative_mass < quants[q])
@@ -381,3 +382,30 @@ def compare_savings_rate(age_start, n, quants, grida, gridz, r1, r2, choice_a1, 
     ax.set_xlabel('Household head age')
     ax.set_ylabel('Average savings rate')
     fig.show()
+
+def savings_and_wealth_report(n, mass_by_k, grida, quants, distr_mass, show_zero):
+    
+    zero_asset_index = np.int64(np.argwhere(grida == 0)[0][0])
+    mass_zero = mass_by_k[zero_asset_index]
+    
+    cum_frac_by_k = np.cumsum(mass_by_k) / np.sum(mass_by_k)
+    cum_kfrac_by_k = np.cumsum(mass_by_k * grida) / np.sum(mass_by_k * grida)
+    
+    # Finding indexes for each quantile
+    quant_mass = np.zeros(shape = (len(quants)))
+    
+    for q in range(len(quants)):
+        quant_index = np.sum(cum_frac_by_k < quants[q])
+        quant_mass[q] = 1 - cum_kfrac_by_k[int(quant_index)]
+    
+    # Reporting Stats
+    print("       ---------------------------\n          Wealth Distribution   \n       ---------------------------")
+    if show_zero:
+        print("\nHouseholds with zero or negative asset: ", np.round(mass_zero*100,1),"%")
+    print("\n Richest        Share of Wealth")
+    for q in range(len(quants)):
+        print(" ",np.round((1 - quants[q])*100,0),"%          ",np.round(quant_mass[q]*100,1))
+    
+    
+    
+    

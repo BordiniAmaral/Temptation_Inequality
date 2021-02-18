@@ -16,7 +16,7 @@
 library(tidyverse)
 
 #-----------------------------------------------------------------------
-#                     Preparing some data
+#                     Preparing some data [Must]
 #-----------------------------------------------------------------------
 
 # Getting household age reference, adding to savings by residual
@@ -29,7 +29,7 @@ savings_by_residual <- savings_by_residual %>%
   left_join(hh_age, by = c("id"="hh_id"))
 
 #-----------------------------------------------------------------------
-#                     Stats by quantile group
+#                     Stats by quantile group [Optional]
 #-----------------------------------------------------------------------
 
 # Identifiying income quantile levels
@@ -52,18 +52,17 @@ savings_summarised <- savings_with_quantile %>%
             wt_stdv = sqrt(sum(income_pc/sum(income_pc)*(savings_rate-mean)^2)))
 
 #-----------------------------------------------------------------------
-#                     Stats by age
+#                     Stats by age [Optional]
 #-----------------------------------------------------------------------
 
-# Summarising savings by age
+# Creating quantiles
 quant_by_five <- savings_by_residual %>%
   filter(age >= 25, age <=65) %>%
   mutate(rounded_five = floor(age/5)*5) %>%
   group_by(rounded_five) %>%
-  summarise(q99 = quantile(income_pc, probs = 0.99, type = 8),
+  summarise(q98 = quantile(income_pc, probs = 0.98, type = 8),
             q90 = quantile(income_pc, probs = 0.90, type = 8),
             q50 = quantile(income_pc, probs = 0.50, type = 8),
-            q25 = quantile(income_pc, probs = 0.25, type = 8),
             q0 = 0) %>%
   pivot_longer(cols = starts_with("q"), names_to = "quant")
 
@@ -80,9 +79,10 @@ savings_by_age <- savings_by_residual %>%
   filter(value == max(value)) %>%
   ungroup()
 
-ggplot(savings_by_age %>% filter(quant != "q0"))+
-  geom_smooth(aes(x = age, y = savings_rate, color = quant), method = "loess")+
-  coord_cartesian(xlim = c(25,65), ylim = c(-2, 1))
+ggplot(savings_by_age)+
+  geom_smooth(aes(x = age, y = savings_rate, color = quant), method = NULL)+
+  coord_cartesian(xlim = c(25,65), ylim = c(-2, 1)) +
+  scale_y_continuous(breaks = seq(-2,1,0.5), minor_breaks = seq(-2,1,0.1))
 
 # Using ages grouped by five years
 savings_by_five <- savings_by_residual %>%
