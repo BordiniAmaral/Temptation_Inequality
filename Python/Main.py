@@ -13,6 +13,7 @@
 
 #%% Loading some packages
 
+import pandas as pd
 import numpy as np
 
 #%% Income Process
@@ -153,9 +154,18 @@ quants = np.array([0,0.5,0.9,0.99,1])
 include_interest = True
 n_select = n-5 # Dissavings at the end of life are huge, making visualization poor
 
-stg.compare_savings_rate(age_start, n_select, quants, grida, gridz, r_nt, r_eq, choice_a_nt, choice_a_eq, distr_mass_nt, distr_mass_eq, include_interest, description1 = "No Temptation", description2 = "With Temptation")
+quant_value_nt, quant_value_eq = stg.compare_savings_rate(age_start, n, n_select, quants, grida, gridz, r_nt, r_eq, choice_a_nt, choice_a_eq, distr_mass_nt, distr_mass_eq, include_interest, description1 = "No Temptation", description2 = "With Temptation")
 quants = np.array([0.5,0.9,0.99])
 stg.compare_k_evolution(age_start,n,mass_by_age_k_nt, mass_by_age_k_eq, quants, grida, description1 = "No Temptation", description2 = "With Temptation")
+
+# Exporting savings rate curves
+savings_nt = pd.DataFrame(quant_value_nt, index = quants, columns = np.arange(age_start,age_start+n))
+savings_eq = pd.DataFrame(quant_value_eq, index = quants, columns = np.arange(age_start,age_start+n))
+
+# Insert simulation ID to find this result later
+sim_id = str("xxx")
+savings_nt.to_csv("D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação\Temptation\Exports\Python (Post Jan21)\sim_"+sim_id+"_savings_nt.csv", sep = ";")
+savings_eq.to_csv("D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação\Temptation\Exports\Python (Post Jan21)\sim_"+sim_id+"_savings_eq.csv", sep = ";")
 
 #%% Calculating some stats
 

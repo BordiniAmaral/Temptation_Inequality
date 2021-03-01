@@ -348,13 +348,13 @@ def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, d
     ax.set_ylabel('Average savings rate')
     fig.show()
 
-def compare_savings_rate(age_start, n, quants, grida, gridz, r1, r2, choice_a1, choice_a2, distr_mass1, distr_mass2, include_interest, description1, description2):
+def compare_savings_rate(age_start, n, n_select, quants, grida, gridz, r1, r2, choice_a1, choice_a2, distr_mass1, distr_mass2, include_interest, description1, description2):
     
     quant_value1 = savings_rate_by_quants_age(n, grida, choice_a1, gridz, r1, distr_mass1, quants, include_interest)
     quant_value2 = savings_rate_by_quants_age(n, grida, choice_a2, gridz, r2, distr_mass2, quants, include_interest)
     
      # Plotting
-    age_tick = np.arange(age_start,age_start+n)
+    age_tick = np.arange(age_start,age_start+n_select)
     color = iter(plt.cm.rainbow(np.linspace(0,1,len(quants))))
     
     fig = plt.figure(figsize=(10,6))
@@ -367,9 +367,9 @@ def compare_savings_rate(age_start, n, quants, grida, gridz, r1, r2, choice_a1, 
             low = str(np.int(quants[q-1]*100))
         top = str(np.int(quants[q]*100))
         label = low + " - " + top + "%"
-        ax.plot(age_tick, np.round(quant_value1[q,:], decimals = 2), label = label, color = c, linestyle = "-" )
-        ax.plot(age_tick, np.round(quant_value2[q,:], decimals = 2), color = c, linestyle = "--")
-    ax.plot(age_tick,np.repeat(0,n), linestyle = '--', color= 'black', linewidth=0.9)
+        ax.plot(age_tick, np.round(quant_value1[q,:n_select], decimals = 2), label = label, color = c, linestyle = "-" )
+        ax.plot(age_tick, np.round(quant_value2[q,:n_select], decimals = 2), color = c, linestyle = "--")
+    ax.plot(age_tick,np.repeat(0,n_select), linestyle = '--', color= 'black', linewidth=0.9)
     
     handles, labels = ax.get_legend_handles_labels()
     display = list(range(1,len(quants)))
@@ -382,6 +382,8 @@ def compare_savings_rate(age_start, n, quants, grida, gridz, r1, r2, choice_a1, 
     ax.set_xlabel('Household head age')
     ax.set_ylabel('Average savings rate')
     fig.show()
+    
+    return quant_value1, quant_value2
 
 def savings_and_wealth_report(n, mass_by_k, grida, quants, distr_mass, show_zero):
     

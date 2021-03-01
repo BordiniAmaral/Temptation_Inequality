@@ -14,6 +14,28 @@
 #-----------------------------------------------------------------------
 
 library(tidyverse)
+library(glue)
+library(data.table)
+
+#-----------------------------------------------------------------------
+#                     Importing csv files from simulation [Must]
+#-----------------------------------------------------------------------
+
+# Insert simulation ID and import savings rate by quantile studied
+sim = "xxx"
+savings_nt <- read.csv(glue("D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/Temptation/Exports/Python (Post Jan21)/sim_{sim}_savings_nt.csv"), row.names = 1, header = TRUE, sep = ";")
+savings_eq <- read.csv(glue("D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/Temptation/Exports/Python (Post Jan21)/sim_{sim}_savings_eq.csv"), row.names = 1, header = TRUE, sep = ";")
+
+#Tidying table
+savings_nt <- savings_nt %>%
+  bind_cols(as_tibble_col(rownames(savings_nt), column_name = "quant_below")) %>%
+  pivot_longer(!quant_below, names_to = "age", values_to = "s_rate") %>%
+  mutate(age = as.integer(str_sub(age,2)))
+
+savings_eq <- savings_eq %>%
+  bind_cols(as_tibble_col(rownames(savings_nt), column_name = "quant_below")) %>%
+  pivot_longer(!quant_below, names_to = "age", values_to = "s_rate") %>%
+  mutate(age = as.integer(str_sub(age,2)))
 
 #-----------------------------------------------------------------------
 #                     Preparing some data [Must]
@@ -79,10 +101,12 @@ savings_by_age <- savings_by_residual %>%
   filter(value == max(value)) %>%
   ungroup()
 
-ggplot(savings_by_age)+
-  geom_smooth(aes(x = age, y = savings_rate, color = quant), method = NULL)+
+ggplot()+
+  geom_smooth(data = savings_by_age, aes(x = age, y = savings_rate, color = quant), method = NULL)+
+  geom_line(data = savings_eq, aes(x = age, y = s_rate, color = quant_below)) +
+  geom_hline(yintercept = 0,color = 'black', linetype = "dashed") +
   coord_cartesian(xlim = c(25,65), ylim = c(-2, 1)) +
-  scale_y_continuous(breaks = seq(-2,1,0.5), minor_breaks = seq(-2,1,0.1))
+  scale_y_continuous(breaks = seq(-2,1,0.5), minor_breaks = seq(-3,1,0.1))
 
 # Using ages grouped by five years
 savings_by_five <- savings_by_residual %>%
@@ -100,3 +124,5 @@ savings_by_five <- savings_by_residual %>%
 
 ggplot(savings_by_five %>% filter(quant != "q0"))+
   geom_line(aes(x = rounded_five, y = mean, color = quant))
+
+
