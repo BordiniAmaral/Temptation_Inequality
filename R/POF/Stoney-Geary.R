@@ -29,7 +29,7 @@ library(dtplyr)
 
 #' **WARNING** '#
 # Cleaning undesired objects
-rm(list = setdiff(ls(), c("consumption_total","morador_count")))
+# rm(list = setdiff(ls(), c("consumption_total","morador_count")))
 
 export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/R Project/Exports (Post-Jan21)"
 setwd(export_path)
@@ -113,28 +113,6 @@ if(trim_outliers){
 # fwrite(temptation_filtered, "temptation_filtered.csv", sep = ";")
 
 #-----------------------------------------------------------------------
-#      Plotting curves from gammas and x0 (for arbitrary tests)
-#-----------------------------------------------------------------------
-
-x_points <- seq(0,240000,100) # DEFINE X-AXIS RANGE
-
-settings <- list(x0 = 75*12,
-                 gamma1 = -2.2,
-                 gamma2 = 0.96) # INSERT VALUES HERE
-
-teste <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
-
-ggplot() +
-  geom_line(data = teste, aes(x = total/12, y = tempt_frac, colour = factor(x0))) +
-  geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac)) +
-  coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.1))
-
-ggplot() +
-  geom_point(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac), size = 0.7) +
-  geom_line(data = teste, aes(x = total/12, y = tempt_frac), colour = "red", size = 1)
-
-
-#-----------------------------------------------------------------------
 #   Running regressions (Cases A,C), inserting GMM result (Case B)
 #-----------------------------------------------------------------------
 
@@ -201,10 +179,9 @@ sigma_y_C <- implied[1]
 xi_C <- implied[2]
 rm(implied)
 
-
 # To have a quick look, adapt which dataset you are selecting:
 
-ggplot(temptation_filtered_reg) +
+ggplot(temptation_filtered_regC) +
   geom_smooth(aes(x = total_monthly_pc, y = tempt_frac)) +
   labs(title = "Temptation by Consumption level (excluding zeros)",
        subtitle = "POF 2017 - 2018 (per-capita)",
@@ -212,7 +189,7 @@ ggplot(temptation_filtered_reg) +
        y = "Fraction spent on temptation") +
   coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.12))
 
-ggplot(temptation_filtered_reg, aes(x = log(`non-temptation_pc` - x0), y = log(temptation_pc))) +
+ggplot(temptation_filtered_regC, aes(x = log(`non-temptation_pc` - x0_C), y = log(temptation_pc))) +
   geom_point(size = 0.5) +
   geom_smooth(model = 'lm', formula = y ~ x +1, se = FALSE, col = "red") +
   labs(title = "Temptation vs Non-temptation consumption (excluding zeros)",
@@ -304,5 +281,25 @@ ggplot() +
         axis.title=element_text(size=14)) +
   scale_x_continuous(breaks = seq(2,14,2)) +
   scale_y_continuous(breaks = seq(2,14,2)) +
-  ggsave(glue("Temptation - No-Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
+  ggsave(glue("Temptation - No Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
 
+#-----------------------------------------------------------------------
+#      Plotting curves from gammas and x0 (for arbitrary tests)
+#-----------------------------------------------------------------------
+
+x_points <- seq(0,240000,100) # DEFINE X-AXIS RANGE
+
+settings <- list(x0 = 75*12,
+                 gamma1 = -2.2,
+                 gamma2 = 0.96) # INSERT VALUES HERE
+
+teste <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
+
+ggplot() +
+  geom_line(data = teste, aes(x = total/12, y = tempt_frac, colour = factor(x0))) +
+  geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac)) +
+  coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.1))
+
+ggplot() +
+  geom_point(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac), size = 0.7) +
+  geom_line(data = teste, aes(x = total/12, y = tempt_frac), colour = "red", size = 1)

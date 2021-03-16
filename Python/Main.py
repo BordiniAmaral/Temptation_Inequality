@@ -68,27 +68,28 @@ print("\nParameters found: \n x0:",grid_x0[sol[0][0]]/12,"\n gam1:",grid_gam1[so
 import OLG_A_CRRA as olg
 
 # Example gridspace...
-grida_space = np.zeros(300)
+grida_space = np.zeros(600)
 for a in range(len(grida_space)):
     if a == 0: 
         grida_space[a] = 50
-    elif a == 1:
-        grida_space[a] = 100
-    elif a < 11:
+    elif a < 12:
+        grida_space[a] = grida_space[a-1]+50
+    elif a < 106:
         grida_space[a] = grida_space[a-1]+100
-    elif a < 61:
-        grida_space[a] = grida_space[a-1]+200
     else:
-        grida_space[a] = grida_space[a-1]*1.02
+        grida_space[a] = grida_space[a-1]*1.01
 
 grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/150))]),[0],grida_space))
 
-gridz = values
+gridz = values*1
 Pi = transition
-n = 40
+
+gridz[gridz<2] = 0
+
+n = 40 # always verify if size is adequate for gridz size
 xi = 1.072
 delta = 0.05
-beta = 0.96
+beta = 0.89
 alpha = 0.4
 sigma_x = 0.21
 sigma_y = 0.29
@@ -97,25 +98,32 @@ x0 = 210*12
 
 A = 1 
 r_low = 0.04
-r_high = 0.06
+r_high = 0.1
 # Check if using correct mass grid for z (it must be coherent with gridz imported from PNAD)
 mass_z = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
-# Computing a single GE - with Temptation
-KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = True, tol = 1e-2, maxit = 10000)
+# 1.Computing baseline GE: No temptation, no function T
+KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = 0, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = 0, temptation = True, tol = 1e-2, maxit = 10000)
 
-# Computing a single GE - without Temptation
-KL_nt, w_nt, C_nt, x_nt, y_nt, V_nt, choice_a_nt, distr_mass_nt, k_mass_nt, k_total_nt, c_mass_nt, c_total_nt, r_nt, init_r_nt = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = False, tol = 1e-2, maxit = 10000)
-
-# Finding equivalent beta to match non-temptation aggregate capital
+# 2.Computing GE with non-homothetic preferences, matching previous aggregate savings
 step = 0.01
 tol = 1e-3
-beta_equivalent, results_equivalent = olg.ge_match_capital(beta, step, tol, k_total_nt, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0)
+temptation = False
+beta_equivalent2, results_equivalent2 = olg.ge_match_by_capital(beta, step, tol, k_total, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, x0, temptation)
 
-choice_a_eq = results_equivalent[6]
-distr_mass_eq = results_equivalent[7]
-k_mass_eq = results_equivalent[8]
-r_eq = results_equivalent[12]
+choice_a_eq = results_equivalent2[6]
+distr_mass_eq = results_equivalent2[7]
+k_mass_eq = results_equivalent2[8]
+
+# 3.Computing GE with full temptation preferences, matching previous aggregate savings
+step = 0.01
+tol = 1e-3
+temptation = True
+beta_equivalent3, results_equivalent3 = olg.ge_match_by_capital(beta, step, tol, k_total, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, x0, temptation)
+
+choice_a_eq = results_equivalent3[6]
+distr_mass_eq = results_equivalent3[7]
+k_mass_eq = results_equivalent3[8]
 
 #%% Plotting
 

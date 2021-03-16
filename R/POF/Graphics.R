@@ -32,7 +32,7 @@ library(cowplot)
 # Cleaning undesired objects
 rm(list = setdiff(ls(), c("consumption_total","morador_count")))
 
-export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/R Project/Exports"
+export_path <- "D:/Google Drive/Working Cloud/EESP-Mestrado/Dissertação/POF/R Project/Exports (Post-Jan21)"
 setwd(export_path)
 
 #-----------------------------------------------------------------------
@@ -85,6 +85,32 @@ if(trim_outliers){
 
 setwd(export_path)
 
+#---------------------------- Making a scatterplot -------------------------
+
+ggplot(temptation_filtered) +
+  geom_point(aes(x = total_monthly_pc, y = tempt_frac)) +
+  labs(title = "Temptation by Consumption level",
+       subtitle = "POF 2017 - 2018 (per-capita)",
+       x = "Monthly expenditure per capita [R$]",
+       y = "Fraction spent on temptation") +
+  coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.9)) +
+  theme_minimal() +
+  ggsave(glue("TemptScatter.png"),
+         width = 10, height = 6.5)
+
+#------------------------------ Making smooth plot ------------------------
+
+ggplot(temptation_cross) +
+  geom_smooth(aes(x = total_monthly_pc, y = tempt_frac)) +
+  labs(title = "Temptation by Consumption level",
+       subtitle = "POF 2017 - 2018 (per-capita)",
+       x = "Monthly expenditure per capita [R$]",
+       y = "Fraction spent on temptation") +
+  coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.08)) +
+  theme_minimal() +
+  ggsave(glue("TemptSmooth.png"),
+         width = 10, height = 6.5)
+
 #-------------------------- Making a 96 percentile zoom --------------------
 
 ggplot(temptation_cross) +
@@ -94,32 +120,22 @@ ggplot(temptation_cross) +
        x = "Monthly expenditure per capita [R$]",
        y = "Fraction spent on temptation") +
   coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.08)) +
-  ggsave(glue("Temptation - 96perc - fraction of consumption, smooth.png"),
-         width = 5, height = 4.5)
+  theme_minimal() +
+  ggsave(glue("TemptSmooth96.png"),
+         width = 10, height = 6.5)
 
 #----------------------- Baseline Graphs ----------------------------------
 
-ggplot(temptation_filtered) +
+ggplot(temptation_filtered %>% filter(temptation_pc>0)) +
   geom_smooth(aes(x = total_monthly_pc, y = tempt_frac)) +
   labs(title = "Temptation by Consumption level (excluding zeros)",
        subtitle = "POF 2017 - 2018 (per-capita)",
        x = "Monthly expenditure per capita [R$]",
        y = "Fraction spent on temptation") +
   coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.12)) +
-  ggsave(glue("Temptation - No-Zero Tempt - fraction of consumption, smooth.png"),
-         width = 5, height = 4.5)
-
-ggplot(temptation_filtered, aes(x = log(`non-temptation_pc`), y = log(temptation_pc))) +
-  geom_point(size = 0.5) +
-  geom_smooth(model = 'lm', formula = y ~ x +1, se = FALSE, col = "red") +
-  labs(title = "Temptation vs Non-temptation consumption (excluding zeros)",
-       x = "(log) Non-temptation Consumption [R$]",
-       y = "(log) Temptation Consumption [R$]") +
-  scale_x_continuous(breaks = seq(2,14,2)) +
-  scale_y_continuous(breaks = seq(2,14,2)) +
-  coord_cartesian(xlim = c(4,14), ylim = c(1, 11)) +
-  ggsave(glue("Temptation - No-Zero Tempt - scatter and lm, smooth.png"),
-         width = 6, height = 5.4)
+  theme_minimal() +
+  ggsave(glue("TemptSmoothNoZero.png"),
+         width = 10, height = 6.5)
 
 
 #-------------- Checking if zero temptation has any trend ------------------
@@ -137,8 +153,9 @@ ggplot(temptation_binary) +
        subtitle = "POF 2017 - 2018 (per-capita)",
        x = "Monthly expenditure per capita [R$]",
        y = "Local Prob. of positive temptation consumption") +
-ggsave(glue("Temptation - 96perc - local prob of positive tempt, smooth.png"),
-       width = 5, height = 4.5)
+  theme_minimal() +
+  ggsave(glue("ZeroTempt.png"),
+         width = 10, height = 6.5)
 
 # selecting < 3000 BRL/pc month sample
 lm_bin <- lm(has_tempt ~ total_monthly_pc + 1, temptation_binary %>% filter(total_monthly_pc<3000))

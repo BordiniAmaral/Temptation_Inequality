@@ -469,31 +469,16 @@ transitions_with_quantile <- transitions_with_quantile %>%
 quantile_points <- data.frame(current_quantile = quantile_points,
                               x_vline = quantile_points)
 
-# Plotting
+# Preparing for Plotting
 
 transitions_with_quantile$current_quantile <- as.factor(transitions_with_quantile$current_quantile)
 quantile_points$current_quantile <- as.factor(quantile_points$current_quantile)
 
-ggplot(transitions_with_quantile)+
-  geom_density(aes(next_quantile, colour = current_quantile, fill = current_quantile), kernel = "gaussian", adjust = 5, alpha = 0.1, outline.type = "both", trim = TRUE)+
-  facet_wrap(~current_quantile, labeller = labeller(current_quantile = quant.lab), ncol = 7) +
-  geom_vline(data = quantile_points, aes(xintercept = x_vline), linetype = "dashed") +
-  labs(title = glue("Disposable income per capita one-year transition - Average 25-65 y.o. family heads"),
-       subtitle = " PNADC 2012-2018 \n Facet label: Current Quantile",
-       x = "Next quantile",
-       y = "Density",
-       colour = "Current quantile",
-       fill = "Current quantile") +
-  theme(legend.position = "none") +
-  scale_x_continuous(breaks = seq(0,1,0.5)) +
-  ggsave(filename = glue("average_distribution.png"),
-         width = 12,
-         height = 5,
-         dpi = 600)
+# Plotting
 
 ggplot(transitions_with_quantile)+
-  geom_density(aes(next_quantile, colour = current_quantile, fill = current_quantile), kernel = "triangular", bw = 0.04, alpha = 0.1, outline.type = "both", trim = TRUE)+
-  facet_wrap(~current_quantile, labeller = labeller(current_quantile = quant.lab)) +
+  geom_density(aes(next_quantile, colour = current_quantile, fill = current_quantile), kernel = "gaussian", adjust = 5, alpha = 0.1, outline.type = "both", trim = TRUE)+
+  facet_wrap(~current_quantile, labeller = labeller(current_quantile = quant.lab), ncol = 5) +
   geom_vline(data = quantile_points, aes(xintercept = x_vline), linetype = "dashed") +
   labs(title = glue("Disposable income per capita one-year transition - Average 25-65 y.o. family heads"),
        subtitle = " PNADC 2012-2018 \n Facet label: Current Quantile",
@@ -503,10 +488,10 @@ ggplot(transitions_with_quantile)+
        fill = "Current quantile") +
   theme(legend.position = "none") +
   scale_x_continuous(breaks = seq(0,1,0.5)) +
-  ggsave(filename = glue("average_distribution_step.png"),
+  ggsave(filename = glue("IncomeDistr.png"),
          width = 8,
          height = 8,
-         dpi = 300)
+         dpi = 600)
 
 # Compiling average # of household members by age and quantile
 

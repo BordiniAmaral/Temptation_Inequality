@@ -80,7 +80,6 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
     # Creating feasible a2 indicator
     # Allows for adding borrowing constraints, if desired!
     possible = U > -np.Inf
-    not_possible = U == -np.Inf
     
     zero_asset_index = np.int64(np.argwhere(grida == 0)[0][0])
     
@@ -99,32 +98,60 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                         
         # Other periods occur normally
         else:
-            for a2 in range(len(grida)):
+            
+            # Computing V_next(z1,a2) separately for an improved loop in what
+            # follows
+            V_next = np.zeros(shape = (len(gridz),len(grida)))
+            for z1 in range(len(gridz)):
+                for a2 in range(len(grida)):
+                    if V[period+1, 0, a2] == -np.Inf:
+                        V_next[z1,a2] = -np.Inf
+                    else:
+                        for z2 in range(len(gridz)):
+                            V_next[z1,a2] = V_next[z1,a2] + Pi[z1,z2]*(V[period+1,z2,a2] - T[z2,a2,int(choice_a[period+1,z2,a2]),period]*temptation)
+            
+            Aux = np.zeros(shape = (len(gridz), len(grida), len(grida)))
+            # Trying to cover the state space in a smart way, avoiding
+            # computing regions that are clearly non optimal
+            for a1 in range(len(grida)):
                 for z1 in range(len(gridz)):
-                    V_next = 0
-                    for z2 in range(len(gridz)):
-                        if V[period+1, z2, a2] == -np.Inf:
-                            Aux[z1,:,a2] = -np.Inf
-                            break
-                        else:
-                            V_next = V_next + Pi[z1,z2]*(V[period+1,z2,a2] - T[z2,a2,int(choice_a[period+1,z2,a2]),period]*temptation)
                     
                     # Excluding impossible steps straightforwardly
-                    a_possible_index = np.sum(not_possible[z1,:,a2,period])
-                    Aux[z1,:a_possible_index,a2] = -np.Inf
+                    a_possible_index = np.sum(possible[z1,a1,:,period])
+                    Aux[z1,a1,a_possible_index:] = -np.Inf
                     
-                    for a1 in range(a_possible_index,len(grida)):
-                        Aux[z1,a1,a2] = U[z1,a1,a2,period] + T[z1,a1,a2,period] + beta*V_next
-                
-            for z1 in range(len(gridz)):
-                for a1 in range(len(grida)):
+                    minimum_indexes = np.argwhere(U[z1,a1,:,period] == U_bound)
+                    unfeasible_indexes = np.argwhere(U[z1,a1,:,period] == -np.Inf)
+                    
+                    # Starting loop on a2 from highest possible, then detecting
+                    # when Aux starts to move away from (local) maximum.
+                    # Rule (arbitrary): 5 consecutive decreases to Aux with
+                    # decreasing a2 below minimum consumption
+                    decreasing = 0
+                    for a2 in range(a_possible_index-1,-1,-1):
+                        Aux[z1,a1,a2] = U[z1,a1,a2,period] + T[z1,a1,a2,period] + beta*V_next[z1,a2]
+                        
+                        if a2 < a_possible_index-1:
+                            if (minimum_indexes.size == 0):
+                                if Aux[z1,a1,a2] < Aux[z1,a1,a2+1]:
+                                    decreasing = decreasing + 1
+                                else:
+                                    decreasing = 0
+                            elif a2 < minimum_indexes[0][0]:
+                                if Aux[z1,a1,a2] < Aux[z1,a1,a2+1]:
+                                    decreasing = decreasing + 1
+                                else:
+                                    decreasing = 0
+                        
+                        if decreasing >= 5:
+                            Aux[z1,a1,:a2] = -np.Inf
+                            break
+                    
                     # Applying rule:
                         # For positive assets, picking only the highest feasible option
                         # For negative assets, picking only the the feasible options below zero_asset (i.e. the agent pays up before being able to consume)
                     
                     #print("FOR DEBUG: (z1,a1,period) = ",z1,a1,period)
-                    minimum_indexes = np.argwhere(U[z1,a1,:,period] == U_bound)
-                    unfeasible_indexes = np.argwhere(U[z1,a1,:,period] == -np.Inf)
                     
                     if minimum_indexes.size != 0 and unfeasible_indexes.size != 0:
                         cut_index = max([(minimum_indexes[0][0]+1), min([zero_asset_index + 1,(unfeasible_indexes[0][0])])])
@@ -138,7 +165,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                     
                     V[period,z1,a1] = max(Aux[z1,a1,:])
                     choice_a[period,z1,a1] = np.argmax(Aux[z1,a1,:])
-    
+
     print("Backwards iteration concluded ")
     return V, choice_a
 
@@ -192,7 +219,7 @@ def stationary_distribution(choice_a, grida, gridz, mass_z, Pi, n):
 def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0,
                         temptation, tol = 1e-2, maxit = 100):
     
-    print("\n Running initial calculations...")
+    print("\nRunning initial calculations...")
     # Starting counter and error
     i = 0
     
@@ -241,7 +268,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     if not both_tested:
         adequate_r = False
         while not adequate_r:
-            print("\n Testing r:",init_r[1])
+            print("\nTesting r:",init_r[1])
             KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[1], mass_z, transfer, A, temptation, x0)
             
             L_total = zsum / w # zsum is total salary mass considering the ranges in POF
@@ -343,16 +370,14 @@ def calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass):
 # Running General Equilibrium results with different betas in order to match
 # a certain level of aggregate capital
 
-# Need to improve this: The match WILL result in the same r (thus, this r is known)
-# All you need to run is several general equilibriums with the same r, ranging
-# the betas. Please implement this.
-def ge_match_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0):
+@njit
+def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, x0, temptation):
     
     # Here, we consider beta0 the one used without temptation. Thus, it is an
-    # upper lower to the beta we are looking for. First I shall test step-incremented
-    # {1,...,m} higher betas until I find one beta_{m} s.t. aggregate capital
-    # is higher than the target. The, I shall execute a bissection with the range
-    # beta_{m-1} - beta{m} until the relative error is below tolerance
+    # lower bound to the beta we are looking for. First I shall test step-incremented
+    # {1,...,m} higher betas until I find one beta_{m} s.t. equilibrium aggregate capital
+    # with given known r is lower than the target. Then, I shall execute a bissection 
+    # with the range beta_{m-1} - beta{m} until the relative error is below tolerance
     
     # Finding the beta_m and conducing bissection
     m = 1
@@ -360,6 +385,7 @@ def ge_match_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, gri
     bissection = False
     count = 1
     beta_low = beta0
+    beta_high = beta0 + m*step
     
     while abs(error) > tol:
         
@@ -368,10 +394,8 @@ def ge_match_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, gri
         else:
             beta = (beta_high + beta_low)/2
         print("\n** Starting iteration ",count,"of capital matching**\n     Current guess:",beta)
-        if count > 1:
-            r_low = init_r[0]
-            r_high = init_r[1]
-        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r = general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation = True, tol = 1e-2, maxit = 10000)
+        
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
         
         error = (k_total - k_target) / k_target
         
@@ -395,7 +419,7 @@ def ge_match_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, gri
             print("\n\n**Bissection concluded**\nBeta = ",np.round(beta,3),"\nError = ",np.round(error,6))
         count = count + 1
     
-    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r)
+    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r)
     
     return beta, results
             

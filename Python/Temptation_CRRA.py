@@ -78,7 +78,7 @@ def create_allocation_grid_by_age(grida, gridz, xi, sigma_x, sigma_y, w, r, n, t
             for z in range(len(gridz)):
                 for a2 in range(len(grida)):
                     C[z,a1,a2,age] = w*gridz[z,age] + (1+r)*grida[a1] - grida[a2] + (transfer - w*gridz[z,age])*(w*gridz[z,age] < transfer)
-                    if C[z,a1,a2,age] <= 1:
+                    if C[z,a1,a2,age] <= 1 or xi == 0:
                         C[z,a1,a2:,age] = max([C[z,a1,a2,age],0])
                         x[z,a1,a2:,age] = max([C[z,a1,a2,age],0])
                         y[z,a1,a2:,age] = 0
