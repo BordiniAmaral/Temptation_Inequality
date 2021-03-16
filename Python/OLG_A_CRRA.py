@@ -287,6 +287,9 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     
     print("\n----------------------------\nInitial guesses finished.\nRange:", np.round(init_r[0],2),"-", np.round(init_r[1],2))
     
+    r_low = init_r[0]
+    r_high = init_r[1]
+    
     if (excess_KL[0] < 0) and (excess_KL[1] > 0):
         print("\n--------------------------------------\n        Proceeding to Bissection \n--------------------------------------")
         excess_KL = 1
