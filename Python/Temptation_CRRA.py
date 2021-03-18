@@ -32,6 +32,8 @@ def calculate_T(y, sigma_y, xi, bound):
     
     if y > bound:
         T = xi*y**(1-sigma_y) / (1-sigma_y)
+    elif xi == 0:
+        T = 0
     else:
         T = xi*bound**(1-sigma_y) / (1-sigma_y)
     return T

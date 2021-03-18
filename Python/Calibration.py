@@ -14,6 +14,7 @@
 from numba import njit
 import numpy as np
 import pandas as pd
+import time
 
 def import_POF_data(file_path):
     pof_df = pd.read_csv(file_path, sep = ";")
@@ -26,9 +27,9 @@ def select_data(pof_df):
     return data_x, data_y
 
 @njit
-def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gridm, consumpt, cons_bin, y_data_sel_sum, W):
+def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gridm, consumpt, cons_bin, y_data_sel_sum, W, verbose):
     
-    print("------------------------ \n   Current x0:",x0,"  \n------------------------\n")
+    if verbose: print("------------------------ \n   Current x0:",x0,"  \n------------------------\n")
     sqe = np.zeros(shape = (len(grid_gam1), len(grid_gam2)))
     counter = 0
     gam2_start = np.int32(0)
@@ -63,7 +64,7 @@ def run_simulations_by_x0(grid_gam1, grid_gam2, x0, grid_x0, data_x, data_y, gri
         progress = np.floor((gam1/len(grid_gam1))*100)
         if (progress / 20) > counter :
             counter = counter + 1
-            print(progress, " % of x0 =",x0,"concluded")
+            if verbose: print(progress, " % of x0 =",x0,"concluded")
     
     return sqe
 
@@ -108,24 +109,24 @@ def Newton(f, df, x_init, e, maxit, c, gam1, gam2, x0):
     return None
 
 @njit
-def run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, quantile):
+def run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, quantile, verbose):
     
     # Starting timer
     # start_time = time.time()
-    print("Running initial calculations... \n")
+    if verbose: print("Running initial calculations... \n")
     
     sqe = np.zeros(shape = (len(grid_x0), len(grid_gam1), len(grid_gam2)))
     consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, grid_x0, quantile)
     
-    print("Proceeding to simulations... \n")
+    if verbose: print("Proceeding to simulations... \n")
     for x0 in range(len(grid_x0)):
         
-        sqe[x0,:,:] = run_simulations_by_x0(grid_gam1, grid_gam2, grid_x0[x0], grid_x0, data_x, data_y, gridm, consumpt, cons_bin, y_data_sel_sum, W)
+        sqe[x0,:,:] = run_simulations_by_x0(grid_gam1, grid_gam2, grid_x0[x0], grid_x0, data_x, data_y, gridm, consumpt, cons_bin, y_data_sel_sum, W, verbose)
         
         #hour = round(((time.time() - start_time)/60)//60)
         #minute = round((time.time() - start_time)//60 - hour*60)
         #second = round((time.time() - start_time) - hour*60*60 - minute*60)
-        print("\n",np.floor((x0/len(grid_x0))*100), " % of all simulations concluded \n")             
+        if verbose: print("\n",np.floor((x0/len(grid_x0))*100), " % of all simulations concluded \n")             
         #print("Time elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
     
     return sqe
@@ -218,3 +219,59 @@ def initial_computations(data_x, data_y, gridq, grid_x0, quantile):
     
         
     return consumpt, cons_bin, y_data_sel_sum, gridm
+
+def bootstrap(samples, sample_size, grid_x0, grid_gam1, grid_gam2, data_x, data_y, gridq, W, quantile, verbose):
+    
+    start_time = time.time()
+    
+    boot_estimates = np.zeros(shape = (samples,3))
+    corner_solution = np.zeros(shape = (samples,3))
+    pop_size = len(data_x)
+    
+    print("\nRunning bootstrap... this will take some time, relax")
+    
+    for s in range(samples):
+        
+        indexes_sampled = np.random.choice(pop_size, size = sample_size)
+        data_x_sampled = data_x[indexes_sampled]
+        data_y_sampled = data_y[indexes_sampled]
+        
+        sqe = run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x_sampled, data_y_sampled, gridq, W, quantile, verbose)
+        sol_index = np.argwhere(sqe == np.min(sqe))
+        boot_estimates[s,:] = np.array([grid_x0[sol_index[0][0]],grid_gam1[sol_index[0][1]],grid_gam2[sol_index[0][2]]])
+        corner_solution[s,:] = np.array([int(sol_index[0][0]==(len(grid_x0)-1))-int(sol_index[0][0]==0), \
+                                         int(sol_index[0][1]==(len(grid_gam1)-1))-int(sol_index[0][1]==0), \
+                                         int(sol_index[0][2]==(len(grid_gam2)-1))-int(sol_index[0][2]==0)])
+        
+        print(s+1,"out of",samples,"calculated")
+    
+    IC95_x0 = np.quantile(boot_estimates[:,0],[0.025,0.975])
+    IC95_gam1 = np.quantile(boot_estimates[:,1],[0.025,0.975])
+    IC95_gam2 = np.quantile(boot_estimates[:,2],[0.025,0.975])
+    
+    avg_x0 = np.sum(boot_estimates[:,0])/samples
+    avg_gam1 = np.sum(boot_estimates[:,1])/samples
+    avg_gam2 = np.sum(boot_estimates[:,2])/samples
+    
+    viol_x0 = np.array([np.sum(corner_solution[:,0]==-1),np.sum(corner_solution[:,0]==1)])
+    viol_gam1 = np.array([np.sum(corner_solution[:,1]==-1),np.sum(corner_solution[:,1]==1)])
+    viol_gam2 = np.array([np.sum(corner_solution[:,2]==-1),np.sum(corner_solution[:,2]==1)])
+    
+    end_time = time.time()
+    hour = round(((end_time - start_time)/60)//60)
+    minute = round((end_time - start_time)//60 - hour*60)
+    second = round((end_time - start_time) - hour*60*60 - minute*60)
+    print("Bootstrap finished! \nTime elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
+    
+    print("----------------------------------------------")
+    print("             Reporting values")
+    print("----------------------------------------------")
+    print("x0: \n  Mean = ",np.round(avg_x0,4),"\n  IC95 = [",IC95_x0[0]/12,",",IC95_x0[1]/12,"]","\n  Space = [",grid_x0[0]/12,",",grid_x0[-1]/12,"]","\n  Violations:",viol_x0[0],"lower,",viol_x0[1],"upper")
+    print("----------------------------------------------")
+    print("gam1: \n  Mean = ",np.round(avg_gam1,4),"\n  IC95 = [",np.round(IC95_gam1[0],4),",",np.round(IC95_gam1[1],4),"]","\n  Space = [",grid_gam1[0],",",grid_gam1[-1],"]","\n  Violations:",viol_gam1[0],"lower,",viol_gam1[1],"upper")
+    print("----------------------------------------------")
+    print("gam2: \n  Mean = ",np.round(avg_gam2,4),"\n  IC95 = [",np.round(IC95_gam2[0],4),",",np.round(IC95_gam2[1],4),"]","\n  Space = [",grid_gam2[0],",",grid_gam2[-1],"]","\n  Violations:",viol_gam2[0],"lower,",viol_gam2[1],"upper")
+    print("----------------------------------------------")
+    
+    return boot_estimates, corner_solution, IC95_x0, IC95_gam1, IC95_gam2
+        

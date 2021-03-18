@@ -70,7 +70,7 @@ def plot_total_k_lorenz(mass_by_k, grida, description):
     plt.xlabel('Cumulative Population')
     plt.title('Lorenz Curve - '+ description)
     
-def compare_total_k_distr(mass_by_k1, mass_by_k2, grida, bin_size, description, label1, label2, log = False, trim_upper = False, trim_value = 0):
+def compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size, description, label1, label2, label3, log = False, trim_upper = False, trim_value = 0):
     
     # Detecting first and last positive mass
     first_index1 = np.argwhere(mass_by_k1 > 0)[0][0]
@@ -79,63 +79,76 @@ def compare_total_k_distr(mass_by_k1, mass_by_k2, grida, bin_size, description, 
     first_index2 = np.argwhere(mass_by_k2 > 0)[0][0]
     last_index2 = np.argwhere(mass_by_k2 > 0)[-1][0]
     
-    if (grida[first_index1] < 0 or grida[first_index2] < 0) and not log:
-        first_value = (grida[min([first_index1, first_index2])] // bin_size ) * bin_size
-        last_value = grida[max([last_index1,last_index2])]
+    first_index3 = np.argwhere(mass_by_k3 > 0)[0][0]
+    last_index3 = np.argwhere(mass_by_k3 > 0)[-1][0]
+    
+    if (grida[first_index1] < 0 or grida[first_index2] < 0 or grida[first_index3] < 0) and not log:
+        first_value = (grida[min([first_index1, first_index2,first_index3])] // bin_size ) * bin_size
+        last_value = grida[max([last_index1,last_index2,last_index3])]
         if trim_upper:
             last_value = min(last_value, trim_value)
     elif not log:
-        first_value = grida[min([first_index1, first_index2])]
-        last_value = grida[max([last_index1,last_index2])]
+        first_value = grida[min([first_index1, first_index2,first_index3])]
+        last_value = grida[max([last_index1,last_index2,last_index3])]
         if trim_upper:
             last_value = min(last_value, trim_value)
     else:
         first_value = np.log(grida[np.argwhere(grida == 0)[0][0]+1])
-        last_value = np.log(grida[max([last_index1,last_index2])])
+        last_value = np.log(grida[max([last_index1,last_index2,last_index3])])
     
     
     if log:
         mass_by_k1 = mass_by_k1[np.argwhere(grida == 0)[0][0]+1:]
         mass_by_k2 = mass_by_k2[np.argwhere(grida == 0)[0][0]+1:]
+        mass_by_k3 = mass_by_k2[np.argwhere(grida == 0)[0][0]+1:]
         
         first_index1 = np.argwhere(grida == 0)[0][0]+1
         first_index2 = np.argwhere(grida == 0)[0][0]+1
+        first_index3 = np.argwhere(grida == 0)[0][0]+1
         
         a_plot_grid = np.arange(first_value, last_value+bin_size, bin_size)
         
         a_plot_values1 = np.zeros(shape = len(a_plot_grid))
         a_plot_values2 = np.zeros(shape = len(a_plot_grid))
+        a_plot_values3 = np.zeros(shape = len(a_plot_grid))
         
         for a in range(len(a_plot_grid)):
             a_plot_values1[a] = np.sum(mass_by_k1[abs(np.log(grida[grida>0]) - a_plot_grid[a]) < (bin_size/2)])
             a_plot_values2[a] = np.sum(mass_by_k2[abs(np.log(grida[grida>0]) - a_plot_grid[a]) < (bin_size/2)])
+            a_plot_values3[a] = np.sum(mass_by_k3[abs(np.log(grida[grida>0]) - a_plot_grid[a]) < (bin_size/2)])
         
     else:
         a_plot_grid = np.arange(first_value, last_value, bin_size)
         
         a_plot_values1 = np.zeros(shape = len(a_plot_grid))
         a_plot_values2 = np.zeros(shape = len(a_plot_grid))
+        a_plot_values3 = np.zeros(shape = len(a_plot_grid))
         
         for a in range(len(a_plot_grid)):
             a_plot_values1[a] = np.sum(mass_by_k1[abs(grida - a_plot_grid[a]) < (bin_size/2)])
             a_plot_values2[a] = np.sum(mass_by_k2[abs(grida - a_plot_grid[a]) < (bin_size/2)])
+            a_plot_values3[a] = np.sum(mass_by_k3[abs(grida - a_plot_grid[a]) < (bin_size/2)])
+            
             
     spl1 = make_interp_spline(a_plot_grid[a_plot_values1>0],a_plot_values1[a_plot_values1>0], k = 3)
     spl2 = make_interp_spline(a_plot_grid[a_plot_values2>0],a_plot_values2[a_plot_values2>0], k = 3)
+    spl3 = make_interp_spline(a_plot_grid[a_plot_values3>0],a_plot_values2[a_plot_values3>0], k = 3)
     smooth_a1 = spl1(a_plot_grid)
     smooth_a2 = spl2(a_plot_grid)
+    smooth_a3 = spl3(a_plot_grid)
     
     # Plotting graph for total k distribution
     
     plt.figure(figsize=(7,7))
     plt.fill_between(a_plot_grid, 0, smooth_a1, alpha = 0.4, label = label1)
     plt.fill_between(a_plot_grid, 0, smooth_a2, alpha = 0.4, label = label2)
+    plt.fill_between(a_plot_grid, 0, smooth_a3, alpha = 0.4, label = label3)
     plt.ylabel('Mass of agents')
     plt.xlabel('Log '*log + 'Asset level')
     plt.title('Capital Distribution - '+ description)
     plt.legend(title = "Distributions")
     
-def compare_total_k_lorenz(mass_by_k1, mass_by_k2, grida, description, label1, label2):
+def compare_total_k_lorenz(mass_by_k1, mass_by_k2, mass_by_k3, grida, description, label1, label2, label3):
     
     cum_mass_by_k1 = np.cumsum(mass_by_k1)
     cum_kfrac_by_k1 = np.cumsum(mass_by_k1 * grida) / np.sum(mass_by_k1 * grida)
@@ -143,9 +156,13 @@ def compare_total_k_lorenz(mass_by_k1, mass_by_k2, grida, description, label1, l
     cum_mass_by_k2 = np.cumsum(mass_by_k2)
     cum_kfrac_by_k2 = np.cumsum(mass_by_k2 * grida) / np.sum(mass_by_k2 * grida)
     
+    cum_mass_by_k3 = np.cumsum(mass_by_k3)
+    cum_kfrac_by_k3 = np.cumsum(mass_by_k3 * grida) / np.sum(mass_by_k3 * grida)
+    
     plt.figure(figsize=(7,7))
     plt.plot(cum_mass_by_k1, cum_kfrac_by_k1, label = label1)
     plt.plot(cum_mass_by_k2, cum_kfrac_by_k2, label = label2)
+    plt.plot(cum_mass_by_k3, cum_kfrac_by_k3, label = label3)
     plt.plot(cum_mass_by_k1, cum_mass_by_k1, linestyle = 'dashed', color='black')
     plt.ylabel('Cumulative Wealth')
     plt.xlabel('Cumulative Population')
@@ -409,5 +426,22 @@ def savings_and_wealth_report(n, mass_by_k, grida, quants, distr_mass, show_zero
         print(" ",np.round((1 - quants[q])*100,0),"%          ",np.round(quant_mass[q]*100,1))
     
     
+def plot_k_curves(k_supply1 ,k_supply2, k_supply3, grid_r, k_demand, label1, label2, label3):
     
-    
+    fig = plt.figure(figsize=(10,6))
+    ax = fig.add_subplot(111)
+    ax.plot(grid_r,k_demand, label = "Demand curve", linestyle = '-', color = 'black')
+    ax.plot(grid_r,k_supply1, label = label1, linestyle = '--')
+    ax.plot(grid_r,k_supply2, label = label2, linestyle = '--')
+    ax.plot(grid_r,k_supply3, label = label3, linestyle = '--')
+    ax.legend(loc='upper right')
+    fig.suptitle('Capital demand and supply curves')
+    ax.set_xlabel('Net interest rate')
+    ax.set_ylabel('Capital')
+    plt.tick_params(
+        axis='y',          # changes apply to the y-axis
+        which='both',      # both major and minor ticks are affected
+        bottom=False,      # ticks along the bottom edge are off
+        top=False,         # ticks along the top edge are off
+        labelbottom=False) # labels along the bottom edge are off
+    fig.show()

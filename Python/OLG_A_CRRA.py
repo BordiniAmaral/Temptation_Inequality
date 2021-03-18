@@ -128,7 +128,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                     # Rule (arbitrary): 5 consecutive decreases to Aux with
                     # decreasing a2 below minimum consumption
                     decreasing = 0
-                    for a2 in range(a_possible_index-1,-1,-1):
+                    for a2 in range(a_possible_index-1,-1,-1): ##  range(len(grida))
                         Aux[z1,a1,a2] = U[z1,a1,a2,period] + T[z1,a1,a2,period] + beta*V_next[z1,a2]
                         
                         if a2 < a_possible_index-1:
@@ -148,8 +148,8 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                             break
                     
                     # Applying rule:
-                        # For positive assets, picking only the highest feasible option
-                        # For negative assets, picking only the the feasible options below zero_asset (i.e. the agent pays up before being able to consume)
+                        # For positive future assets, picking only the highest feasible option
+                        # For negative future assets, picking only the the feasible options below zero_asset (i.e. the agent pays up before being able to consume)
                     
                     #print("FOR DEBUG: (z1,a1,period) = ",z1,a1,period)
                     
@@ -376,7 +376,7 @@ def calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass):
 @njit
 def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, x0, temptation):
     
-    # Here, we consider beta0 the one used without temptation. Thus, it is an
+    # Here, we consider beta0 the one used without temptation, and plain CRRA. Thus, it is an
     # lower bound to the beta we are looking for. First I shall test step-incremented
     # {1,...,m} higher betas until I find one beta_{m} s.t. equilibrium aggregate capital
     # with given known r is lower than the target. Then, I shall execute a bissection 
@@ -426,7 +426,28 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
     
     return beta, results
             
+def compute_k_supply_curve(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r, mass_z, transfer, A, temptation, x0):
+    
+    k_supply = np.zeros(len(grid_r))
+    
+    for r in range(len(grid_r)):
         
-            
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r[r], mass_z, transfer, A, temptation, x0)
         
+        k_supply[r] = k_total
         
+    return k_supply
+
+# Remember below that A = 1/w by construction of our calibration
+def compute_k_demand_curve(grid_r, delta, w, A, gridz, mass_z, n, alpha):
+    
+    k_demand = np.zeros(len(grid_r))
+    
+    zsum = calculate_labor(gridz, mass_z, n)
+    L_total = zsum / w
+    
+    for r in range(len(grid_r)):
+        
+        k_demand[r] = ((grid_r[r]+delta)/(alpha*A))**(1/(alpha-1))*L_total
+    
+    return k_demand
