@@ -157,14 +157,4 @@ ggplot(temptation_binary) +
   ggsave(glue("ZeroTempt.png"),
          width = 10, height = 6.5)
 
-# selecting < 3000 BRL/pc month sample
-lm_bin <- lm(has_tempt ~ total_monthly_pc + 1, temptation_binary %>% filter(total_monthly_pc<3000))
-summary(lm_bin)
 
-# selecting 500 < x < 3000 BRL/pc month sample
-lm_bin <- lm(has_tempt ~ total_monthly_pc + 1, temptation_binary %>% filter(total_monthly_pc<3000, total_monthly_pc>500))
-summary(lm_bin)
-
-# selecting 1000 < x < 3000 BRL/pc month sample
-lm_bin <- lm(has_tempt ~ total_monthly_pc + 1, temptation_binary %>% filter(total_monthly_pc<3000, total_monthly_pc>1000))
-summary(lm_bin)
