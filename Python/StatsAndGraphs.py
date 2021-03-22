@@ -196,23 +196,28 @@ def plot_k_evolution(age_start,n,mass_by_age_k, quants, grida, description):
         mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
     fig.show()
     
-def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grida, description1, description2):
+def compare_k_evolution(age_start, n, mass_by_age_k1, mass_by_age_k2, mass_by_age_k3, quants, grida, description1, description2, description3):
     
     cohort_mass = np.sum(mass_by_age_k1[0,:])
     cumulative_per_age1 = np.round(np.cumsum(mass_by_age_k1,axis = 1) / cohort_mass , 4)
     cumulative_per_age2 = np.round(np.cumsum(mass_by_age_k2,axis = 1) / cohort_mass , 4)
+    cumulative_per_age3 = np.round(np.cumsum(mass_by_age_k3,axis = 1) / cohort_mass , 4)
     
     # Finding indexes for each quantile at each age
     quant_index1 = np.zeros(shape = (len(quants),n))
     quant_index2 = np.zeros(shape = (len(quants),n))
+    quant_index3 = np.zeros(shape = (len(quants),n))
     quant_value1 = np.zeros(shape = (len(quants),n))
     quant_value2 = np.zeros(shape = (len(quants),n))
+    quant_value3 = np.zeros(shape = (len(quants),n))
     for age in range(n):
         for q in range(len(quants)):
             quant_index1[q,age] = np.sum(cumulative_per_age1[age,:] < quants[q])
             quant_index2[q,age] = np.sum(cumulative_per_age2[age,:] < quants[q])
+            quant_index3[q,age] = np.sum(cumulative_per_age3[age,:] < quants[q])
             quant_value1[q,age] = grida[int(quant_index1[q,age])-1]
             quant_value2[q,age] = grida[int(quant_index2[q,age])-1]
+            quant_value3[q,age] = grida[int(quant_index3[q,age])-1]
     
     # Plotting
     age_tick = np.arange(age_start,age_start+n)
@@ -225,13 +230,15 @@ def compare_k_evolution(age_start,n,mass_by_age_k1, mass_by_age_k2, quants, grid
         label = str(np.int(quants[q]*100)) + "%"
         ax.plot(age_tick,quant_value1[q,:], color = c, linestyle = '-', label = label)
         ax.plot(age_tick,quant_value2[q,:], color = c, linestyle = '--')
+        ax.plot(age_tick,quant_value3[q,:], color = c, linestyle = '-.')
         
     handles, labels = ax.get_legend_handles_labels()
     display = list(range(0,len(quants)))
     Artist1 = plt.Line2D((0,1),(0,0), color='k', linestyle='-')
     Artist2 = plt.Line2D((0,1),(0,0), color='k', linestyle='--')
-    ax.legend([handle for i,handle in enumerate(handles) if i in display]+[Artist1,Artist2], \
-              [label for i,label in enumerate(labels) if i in display]+[description1, description2], loc='upper left')
+    Artist3 = plt.Line2D((0,1),(0,0), color='k', linestyle='-.')
+    ax.legend([handle for i,handle in enumerate(handles) if i in display]+[Artist1,Artist2,Artist3], \
+              [label for i,label in enumerate(labels) if i in display]+[description1, description2, description3], loc='upper left')
     
     fig.suptitle('Wealth evolution by wealth quantile (per capita)')
     ax.set_xlabel('Household head age')
@@ -365,10 +372,11 @@ def plot_savings_rate(age_start, n, gross_savings, savings_rate, total_income, d
     ax.set_ylabel('Average savings rate')
     fig.show()
 
-def compare_savings_rate(age_start, n, n_select, quants, grida, gridz, r1, r2, choice_a1, choice_a2, distr_mass1, distr_mass2, include_interest, description1, description2):
+def compare_savings_rate(age_start, n, n_select, quants, grida, gridz, r1, r2, r3, choice_a1, choice_a2, choice_a3, distr_mass1, distr_mass2, distr_mass3, include_interest, description1, description2, description3):
     
     quant_value1 = savings_rate_by_quants_age(n, grida, choice_a1, gridz, r1, distr_mass1, quants, include_interest)
     quant_value2 = savings_rate_by_quants_age(n, grida, choice_a2, gridz, r2, distr_mass2, quants, include_interest)
+    quant_value3 = savings_rate_by_quants_age(n, grida, choice_a3, gridz, r3, distr_mass3, quants, include_interest)
     
      # Plotting
     age_tick = np.arange(age_start,age_start+n_select)
@@ -386,14 +394,16 @@ def compare_savings_rate(age_start, n, n_select, quants, grida, gridz, r1, r2, c
         label = low + " - " + top + "%"
         ax.plot(age_tick, np.round(quant_value1[q,:n_select], decimals = 2), label = label, color = c, linestyle = "-" )
         ax.plot(age_tick, np.round(quant_value2[q,:n_select], decimals = 2), color = c, linestyle = "--")
+        ax.plot(age_tick, np.round(quant_value3[q,:n_select], decimals = 2), color = c, linestyle = "-.")
     ax.plot(age_tick,np.repeat(0,n_select), linestyle = '--', color= 'black', linewidth=0.9)
     
     handles, labels = ax.get_legend_handles_labels()
     display = list(range(1,len(quants)))
     Artist1 = plt.Line2D((0,1),(0,0), color='k', linestyle='-')
     Artist2 = plt.Line2D((0,1),(0,0), color='k', linestyle='--')
-    ax.legend([handle for i,handle in enumerate(handles) if i in display]+[Artist1,Artist2], \
-              [label for i,label in enumerate(labels) if i in display]+[description1, description2], loc='lower left')
+    Artist3 = plt.Line2D((0,1),(0,0), color='k', linestyle='-.')
+    ax.legend([handle for i,handle in enumerate(handles) if i in display]+[Artist1,Artist2,Artist3], \
+              [label for i,label in enumerate(labels) if i in display]+[description1, description2, description3], loc='lower left')
     
     fig.suptitle('Savings rate by total income quantile')
     ax.set_xlabel('Household head age')

@@ -116,7 +116,7 @@ def run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, 
     if verbose: print("Running initial calculations... \n")
     
     sqe = np.zeros(shape = (len(grid_x0), len(grid_gam1), len(grid_gam2)))
-    consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, grid_x0, quantile)
+    consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, quantile)
     
     if verbose: print("Proceeding to simulations... \n")
     for x0 in range(len(grid_x0)):
@@ -130,72 +130,9 @@ def run_x0_simulations(grid_gam1, grid_gam2, grid_x0, data_x, data_y, gridq, W, 
         #print("Time elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
     
     return sqe
-
-@njit # THIS FUNCTION HAS NOT BEEN REVISED!!
-def run_two_steps(grid_sigx, grid_sigy, grid_x0, data_x, data_y, gridq, grid_xi):
-    
-    W = np.identity(len(gridq))
-    
-    print("Running first simulation...\n")
-    
-    sqe_I = run_x0_simulations(grid_sigx, grid_sigy, grid_x0, data_x, data_y, gridq, grid_xi, W)
-    
-    print("Recalculating weight matrix...\n")
-    
-    sol = np.argwhere(sqe_I == np.min(sqe_I))
-    sol_x0_1 = grid_x0[sol[0][0]]
-    sol_sigx_1 = grid_sigx[sol[0][1]]
-    sol_sigy_1 = grid_sigy[sol[0][2]]
-    sol_xi_1 = grid_xi[sol[0][3]]
-    errors_sol = simulate_single(sol_sigx_1, sol_sigy_1, sol_x0_1, data_x, data_y, gridq, sol_xi_1, W, grid_x0)[1]
-    Omega, W_new = recalculate_weights(errors_sol)
-    
-    print(" First stage concluded!\n\n Parameters found: \n x0:",sol_x0_1,"\n sigx:",sol_sigx_1,"\n sigy:",sol_sigy_1,"\n xi:",sol_xi_1)
-    
-    print("Running second simulation...\n")
-    
-    sqe_W = run_x0_simulations(grid_sigx, grid_sigy, grid_x0, data_x, data_y, gridq, grid_xi, W_new)
-    
-    sol = np.argwhere(sqe_W == np.min(sqe_W))
-    sol_x0_2 = grid_x0[sol[0][0]]
-    sol_sigx_2 = grid_sigx[sol[0][1]]
-    sol_sigy_2 = grid_sigy[sol[0][2]]
-    sol_xi_2 = grid_xi[sol[0][3]]
-    
-    print(" (First Stage Recap)\n\n Parameters found: \n x0:",sol_x0_1,"\n sigx:",sol_sigx_1,"\n sigy:",sol_sigy_1,"\n xi:",sol_xi_1,"\n---------------------------")
-    print(" Second stage concluded!\n\n Parameters found: \n x0:",sol_x0_2,"\n sigx:",sol_sigx_2,"\n sigy:",sol_sigy_2,"\n xi:",sol_xi_2)
-
-    return sqe_I, sqe_W, W_new, Omega
-
-@njit # THIS FUNCTION HAS NOT BEEN REVISED!!
-def recalculate_weights(m_errors):
-    Omega = (1/len(m_errors))* (m_errors.reshape((len(m_errors),1)) @ m_errors.reshape((1,len(m_errors))))
-    W_new = np.linalg.pinv(Omega)
-    
-    return Omega, W_new
-
-@njit # THIS FUNCTION HAS NOT BEEN REVISED!!
-def simulate_single(sigx, sigy, x0, data_x, data_y, gridq, xi, W, grid_x0):
-    
-    consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, grid_x0)
-    
-    y_sim = np.zeros(shape = (len(data_x)))
-    x_sim = np.zeros(shape = (len(data_x)))
-    
-    for x in range(len(data_x)):
-        if consumpt[x] < (x0 + 2):
-            x_sim[x] = consumpt[x]
-        else:
-            x_sim[x] = Newton(f, df, (x0 + 0.0001), 1e-6,int(1e6), consumpt[x], xi, sigx, sigy, x0)
-            y_sim[x] = (data_x[x] + data_y[x]) - x_sim[x]
-    
-    x0_index = np.argwhere(grid_x0 == x0)[0][0]
-    sqe, m_errors = calculate_sqe(y_sim, data_x, data_y, x0_index, gridm, cons_bin, y_data_sel_sum, W)
-    
-    return sqe, m_errors
     
 @njit
-def initial_computations(data_x, data_y, gridq, grid_x0, quantile):
+def initial_computations(data_x, data_y, gridq, quantile):
     
     consumpt = data_x + data_y
     
@@ -266,7 +203,7 @@ def bootstrap(samples, sample_size, grid_x0, grid_gam1, grid_gam2, data_x, data_
     print("----------------------------------------------")
     print("             Reporting values")
     print("----------------------------------------------")
-    print("x0: \n  Mean = ",np.round(avg_x0,4),"\n  IC95 = [",IC95_x0[0]/12,",",IC95_x0[1]/12,"]","\n  Space = [",grid_x0[0]/12,",",grid_x0[-1]/12,"]","\n  Violations:",viol_x0[0],"lower,",viol_x0[1],"upper")
+    print("x0: \n  Mean = ",np.round(avg_x0,4)/12,"\n  IC95 = [",IC95_x0[0]/12,",",IC95_x0[1]/12,"]","\n  Space = [",grid_x0[0]/12,",",grid_x0[-1]/12,"]","\n  Violations:",viol_x0[0],"lower,",viol_x0[1],"upper")
     print("----------------------------------------------")
     print("gam1: \n  Mean = ",np.round(avg_gam1,4),"\n  IC95 = [",np.round(IC95_gam1[0],4),",",np.round(IC95_gam1[1],4),"]","\n  Space = [",grid_gam1[0],",",grid_gam1[-1],"]","\n  Violations:",viol_gam1[0],"lower,",viol_gam1[1],"upper")
     print("----------------------------------------------")
@@ -274,4 +211,37 @@ def bootstrap(samples, sample_size, grid_x0, grid_gam1, grid_gam2, data_x, data_
     print("----------------------------------------------")
     
     return boot_estimates, corner_solution, IC95_x0, IC95_gam1, IC95_gam2
+
+@njit
+def compute_sim_tempt_frac(data_x, data_y, x0, gam1, gam2, gridq, quantile, verbose):
+    
+    y_sim = np.zeros(shape = (len(data_x)))
+    x_sim = np.zeros(shape = (len(data_x)))
+    
+    consumpt, cons_bin, y_data_sel_sum, gridm = initial_computations(data_x, data_y, gridq, quantile)
+    
+    for x in range(len(data_x)):
+        if consumpt[x] < (x0 + 2):
+            x_sim[x] = consumpt[x]
+        else:
+            x_sim[x] = Newton(f, df, (x0 + 1), 1e-6,int(1e6), consumpt[x], gam1, gam2, x0)
+            y_sim[x] = consumpt[x] - x_sim[x]
+            
+    fraction_sim = np.zeros(shape = len(gridm))
+    
+    for b in range(len(gridm)):
+        y_sim_sel_sum = np.sum(y_sim[cons_bin == b])
+        cons_sel_sum = np.sum(consumpt[cons_bin == b])
+        
+        fraction_sim[b] = y_sim_sel_sum / cons_sel_sum
+        
+    if verbose:
+        print("----------------------------------------------")
+        print("             Reporting values")
+        print("----------------------------------------------")
+        print("     Region          Sim.Tempt. Fraction ")
+        for b in range(len(gridm)):
+            print("    ",b,"              ",np.round(fraction_sim[b],4)*100,"%")
+    
+    return fraction_sim
         

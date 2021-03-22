@@ -146,8 +146,8 @@ rm(implied)
 
 # Manually input these values from python GMM script
 
-x0_B <- 210*12                     # INSERT VALUE HERE (remember to *12 for yearly basis)
-gammas_B <- c(0.24,0.725)       # INSERT VALUE HERE
+x0_B <- 133*12                     # INSERT VALUE HERE (remember to *12 for yearly basis)
+gammas_B <- c(-0.52,0.794)       # INSERT VALUE HERE
 
 # Obtaining implied sigma_y and xi from gammas, under arbitrary sigma_xxi <- 1
 
@@ -178,26 +178,6 @@ implied <- sigy_xi_implied(gammas_C[1], gammas_C[2], sigma_x)
 sigma_y_C <- implied[1]
 xi_C <- implied[2]
 rm(implied)
-
-# To have a quick look, adapt which dataset you are selecting:
-
-ggplot(temptation_filtered_regC) +
-  geom_smooth(aes(x = total_monthly_pc, y = tempt_frac)) +
-  labs(title = "Temptation by Consumption level (excluding zeros)",
-       subtitle = "POF 2017 - 2018 (per-capita)",
-       x = "Monthly expenditure per capita [R$]",
-       y = "Fraction spent on temptation") +
-  coord_cartesian(xlim = c(0,20000), ylim = c(0, 0.12))
-
-ggplot(temptation_filtered_regC, aes(x = log(`non-temptation_pc` - x0_C), y = log(temptation_pc))) +
-  geom_point(size = 0.5) +
-  geom_smooth(model = 'lm', formula = y ~ x +1, se = FALSE, col = "red") +
-  labs(title = "Temptation vs Non-temptation consumption (excluding zeros)",
-       x = "(log) Non-temptation Consumption (above x0) [R$]",
-       y = "(log) Temptation Consumption [R$]") +
-  scale_x_continuous(breaks = seq(2,14,2)) +
-  scale_y_continuous(breaks = seq(2,14,2)) +
-  coord_cartesian(xlim = c(4,14), ylim = c(1, 11))
 
 #-----------------------------------------------------------------------
 #                   Comparing solutions A, B and C
@@ -282,6 +262,28 @@ ggplot() +
   scale_x_continuous(breaks = seq(2,14,2)) +
   scale_y_continuous(breaks = seq(2,14,2)) +
   ggsave(glue("Temptation - No Zero Tempt - scatter and line, three alternatives.png"), width = 10, height = 6.5)
+
+#-----------------------------------------------------------------------
+#                     SOME STATS
+#-----------------------------------------------------------------------
+
+#-------------- Average temptation in some regions ------------------
+
+# Regions of total monthly consumption per capita
+region_frontiers <- c(0, 500, 1000, 2000, 3000, 4000, 5000, 9999999)
+regions <- tibble(low = region_frontiers[1:length(region_frontiers)-1],
+                  top = region_frontiers[-1],
+                  region = seq(length(region_frontiers)-1))
+
+avg_tempt <- temptation_cross %>%
+  ungroup() %>%
+  rowwise() %>%
+  mutate(region = regions$region[sum(total_monthly_pc > regions$low)]) %>%
+  group_by(region) %>%
+  summarise(avg = sum(temptation_pc) / sum(temptation_pc + `non-temptation_pc`),
+            n = n()) %>%
+  ungroup() %>%
+  right_join(regions, by = "region")
 
 #-----------------------------------------------------------------------
 #      Plotting curves from gammas and x0 (for arbitrary tests)

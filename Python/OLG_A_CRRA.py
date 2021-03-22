@@ -426,13 +426,28 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
     
     return beta, results
             
-def compute_k_supply_curve(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r, mass_z, transfer, A, temptation, x0):
+def compute_k_supply_curve(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r, r_ref, mass_z, transfer, A, temptation, x0):
     
     k_supply = np.zeros(len(grid_r))
     
+    # Computing reference GE labor supply
+    KL = calculate_KL(r_ref, delta, alpha, A)
+    w = calculate_w(alpha, A, KL)
+    
+    # Adapting gridz to correspond to hh annual disposable income in R$ in reference scenario:
+    gridz_new = gridz/w
+    
     for r in range(len(grid_r)):
         
-        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r[r], mass_z, transfer, A, temptation, x0)
+        # Creating allocation grid
+        C, x, y = tpt.create_allocation_grid_by_age(grida, gridz_new, xi, sigma_x, sigma_y, w, grid_r[r], n, transfer, x0)
+        
+        # Solving lifecycle
+        V, choice_a = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
+        
+        # Aggregating capital and consumption
+        distr_mass = stationary_distribution(choice_a, grida, gridz_new, mass_z, Pi, n)
+        k_mass, k_total = aggregate_capital(grida, distr_mass, gridz_new, n)
         
         k_supply[r] = k_total
         

@@ -248,24 +248,4 @@ fwrite(consumption_total, "consumption_total.csv", sep = ";")
 write(savings_by_residual, "savings_by_residual.csv", sep = ";")
 fwrite(morador_count, "morador_count.csv", sep = ";")
 
-#-----------------------------------------------------------------------
-#                     SOME STATS
-#-----------------------------------------------------------------------
 
-#-------------- Average temptation in some regions ------------------
-
-# Regions of total monthly consumption per capita
-region_frontiers <- c(0, 500, 1000, 2000, 3000, 4000, 5000, 9999999)
-regions <- tibble(low = region_frontiers[1:length(region_frontiers)-1],
-                  top = region_frontiers[-1],
-                  region = seq(length(region_frontiers)-1))
-
-avg_tempt <- temptation_cross %>%
-  ungroup() %>%
-  rowwise() %>%
-  mutate(region = regions$region[sum(total_monthly_pc > regions$low)]) %>%
-  group_by(region) %>%
-  summarise(avg = sum(temptation_pc) / sum(temptation_pc + `non-temptation_pc`),
-            n = n()) %>%
-  ungroup() %>%
-  right_join(regions, by = "region")
