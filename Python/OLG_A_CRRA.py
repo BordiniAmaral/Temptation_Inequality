@@ -42,7 +42,7 @@ def calculate_labor(gridz, mass_z, n):
     return np.sum(L_mass)
 
 @njit
-def compute_utility_grids(x,y,grida,gridz,n,sigma_x,sigma_y,xi,x0, bound):
+def compute_utility_grids(x,y,grida,gridz,n,sigma_x,sigma_y,xi,x0, x_bound, y_bound):
     
     # Defining regular utility and temptation utility space U(x) and T(y)
     U = np.zeros(shape = (len(gridz), len(grida), len(grida), n))
@@ -52,8 +52,8 @@ def compute_utility_grids(x,y,grida,gridz,n,sigma_x,sigma_y,xi,x0, bound):
         for a1 in range(len(grida)):
             for a2 in range(len(grida)):
                 for age in range(n):
-                    U[z,a1,a2,age] = tpt.calculate_U(x[z,a1,a2,age], sigma_x, x0, bound)
-                    T[z,a1,a2,age] = tpt.calculate_T(y[z,a1,a2,age], sigma_y, xi, bound)
+                    U[z,a1,a2,age] = tpt.calculate_U(x[z,a1,a2,age], sigma_x, x0, x_bound)
+                    T[z,a1,a2,age] = tpt.calculate_T(y[z,a1,a2,age], sigma_y, xi, y_bound)
     
     return U, T
 
@@ -64,11 +64,14 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
     # Defining value function space V(period, productivity, current asset)
     V = np.zeros(shape = (n, len(gridz), len(grida)))
     
-    bound = 1 # Bounding CRRA by evaluating only up to a certain distance from minimum value
-    U_bound = (bound)**(1 - sigma_x) / (1-sigma_x)
+    bound =  x0 + 1 # Bounding CRRA by evaluating only up to a close distance from minimum value
+    x_bound = tpt.Newton(tpt.f,tpt.df,(x0 + 0.0001),1e-6,int(1e6), bound, xi, sigma_x, sigma_y, x0)
+    y_bound = bound - x_bound
+    U_bound = (x_bound - x0)**(1 - sigma_x) / (1-sigma_x)
+    # T_bound = xi*y_bound**(1-sigma_y) / (1-sigma_y)
     
     print("Computing utility grids...")
-    U, T = compute_utility_grids(x, y, grida ,gridz, n, sigma_x, sigma_y, xi, x0, bound)
+    U, T = compute_utility_grids(x, y, grida ,gridz, n, sigma_x, sigma_y, xi, x0, x_bound, y_bound)
 
     # Creating choice objects choice (period, productivity, current asset)
     choice_a = np.zeros(shape = (n, len(gridz), len(grida)))
@@ -108,7 +111,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                         V_next[z1,a2] = -np.Inf
                     else:
                         for z2 in range(len(gridz)):
-                            V_next[z1,a2] = V_next[z1,a2] + Pi[z1,z2]*(V[period+1,z2,a2] - T[z2,a2,int(choice_a[period+1,z2,a2]),period]*temptation)
+                            V_next[z1,a2] = V_next[z1,a2] + Pi[z1,z2]*(V[period+1,z2,a2] - T[z2,a2,int(choice_a[period+1,z2,a2]),period+1]*temptation)
             
             Aux = np.zeros(shape = (len(gridz), len(grida), len(grida)))
             # Trying to cover the state space in a smart way, avoiding
@@ -386,8 +389,26 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
     m = 1
     error = 1
     bissection = False
-    count = 1
+    beta_low_found = False
+    count = 0
     beta_low = beta0
+    
+    print("Testing lower bound for beta")
+    # Testing beta0
+    while not beta_low_found:
+        
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta0, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
+        error = (k_total - k_target) / k_target
+        
+        if error < 0:
+            print("Lower bound found. \nbeta_low = ",beta0)
+            beta_low_found = True
+        else:
+            count = count + 1
+            beta0 = beta0 - count*step
+            print("Lower beta still high. Updating to beta_low = ", beta0)
+    
+    count = 1
     beta_high = beta0 + m*step
     
     while abs(error) > tol:
@@ -466,3 +487,7 @@ def compute_k_demand_curve(grid_r, delta, w, A, gridz, mass_z, n, alpha):
         k_demand[r] = ((grid_r[r]+delta)/(alpha*A))**(1/(alpha-1))*L_total
     
     return k_demand
+
+# Write this if you want to check how strong is the difference of counting or not temptation
+def compute_temptation_discount(V,choice_a,grida,gridz,Pi):
+    return None

@@ -17,25 +17,25 @@ import numpy as np
 from numba import njit
 
 @njit
-def calculate_U(x,sigma_x, x0, bound):
+def calculate_U(x,sigma_x, x0, x_bound):
     
-    if x > x0 + bound:
+    if x > x_bound:
         U = (x-x0)**(1 - sigma_x) / (1-sigma_x)
     elif x > 0:
-        U = (bound)**(1 - sigma_x) / (1-sigma_x)
+        U = (x_bound-x0)**(1 - sigma_x) / (1-sigma_x)
     else:
         U = -np.Inf
     return U
 
 @njit
-def calculate_T(y, sigma_y, xi, bound):
+def calculate_T(y, sigma_y, xi, y_bound):
     
-    if y > bound:
+    if y > y_bound:
         T = xi*y**(1-sigma_y) / (1-sigma_y)
     elif xi == 0:
         T = 0
     else:
-        T = xi*bound**(1-sigma_y) / (1-sigma_y)
+        T = xi*y_bound**(1-sigma_y) / (1-sigma_y)
     return T
 
 @njit
@@ -105,18 +105,37 @@ def create_allocation_grid_by_age(grida, gridz, xi, sigma_x, sigma_y, w, r, n, t
     
     return C, x, y
 
-
-########################## TESTING NUMBA ##################################
-
-# start = time.time()
-# x, y = create_allocation_grid_by_age(grida,gridz,xi,sigma_x,sigma_y, w, r, n)
-# end = time.time()
-# print("Elapsed (with compilation) = %s" % (end - start))
-
-# start = time.time()
-# Newton(f,df,1,1e-10,int(1e6),3000, xi, sigma_x, sigma_y)
-# end = time.time()
-# print("Elapsed (with compilation) = %s" % (end - start))
+@njit
+def calculate_allocation_by_C(C, x0, sigma_x, sigma_y, xi):
+    
+    x = np.zeros(shape = len(C))
+    y = np.zeros(shape = len(C))
+    frac = np.zeros(shape = len(C))
+    dxdc = np.zeros(shape = len(C))
+    dxdc[0] = 1
+    
+    for i in range(len(C)):
+        if C[i] <= 1 or xi == 0:
+            C[i] = max([C[i],0])
+            x[i] = max([C[i],0])
+            y[i] = 0
+            if i > 0:
+                dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
+            next
+        elif C[i] <= x0 + 1:
+            C[i] = C[i]
+            x[i] = C[i]
+            y[i] = 0
+            if i > 0:
+                dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
+        else:
+            x[i] = Newton(f,df,(x0 + 0.0001),1e-6,int(1e6),C[i], xi, sigma_x, sigma_y, x0)
+            y[i] = C[i] - x[i]
+            frac[i] = y[i] / C[i]
+            if i > 0:
+                dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
+    
+    return x, y, frac, dxdc
 
 
 

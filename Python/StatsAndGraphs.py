@@ -132,7 +132,7 @@ def compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size, d
             
     spl1 = make_interp_spline(a_plot_grid[a_plot_values1>0],a_plot_values1[a_plot_values1>0], k = 3)
     spl2 = make_interp_spline(a_plot_grid[a_plot_values2>0],a_plot_values2[a_plot_values2>0], k = 3)
-    spl3 = make_interp_spline(a_plot_grid[a_plot_values3>0],a_plot_values2[a_plot_values3>0], k = 3)
+    spl3 = make_interp_spline(a_plot_grid[a_plot_values3>0],a_plot_values3[a_plot_values3>0], k = 3)
     smooth_a1 = spl1(a_plot_grid)
     smooth_a2 = spl2(a_plot_grid)
     smooth_a3 = spl3(a_plot_grid)
@@ -140,11 +140,14 @@ def compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size, d
     # Plotting graph for total k distribution
     
     plt.figure(figsize=(7,7))
-    plt.fill_between(a_plot_grid, 0, smooth_a1, alpha = 0.4, label = label1)
-    plt.fill_between(a_plot_grid, 0, smooth_a2, alpha = 0.4, label = label2)
-    plt.fill_between(a_plot_grid, 0, smooth_a3, alpha = 0.4, label = label3)
+    plt.fill_between(a_plot_grid, 0, smooth_a1, color = 'black', alpha = 0.2)
+    plt.plot(a_plot_grid, smooth_a1, label = label1)
+    plt.fill_between(a_plot_grid, 0, smooth_a2, color = 'black', alpha = 0.2)
+    plt.plot(a_plot_grid, smooth_a2, label = label2)
+    plt.fill_between(a_plot_grid, 0, smooth_a3, color = 'black', alpha = 0.2)
+    plt.plot(a_plot_grid, smooth_a3, label = label3)
     plt.ylabel('Mass of agents')
-    plt.xlabel('Log '*log + 'Asset level')
+    plt.xlabel('Log '*log + 'Wealth')
     plt.title('Capital Distribution - '+ description)
     plt.legend(title = "Distributions")
     
