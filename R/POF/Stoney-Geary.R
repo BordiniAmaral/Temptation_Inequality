@@ -116,8 +116,8 @@ if(trim_outliers){
 #   Running regressions (Cases A,C), inserting GMM result (Case B)
 #-----------------------------------------------------------------------
 
-# Default external sigma_x (from Issler, Piqueira (2000))
-sigma_x <- 0.21
+# Default external sigma_x (from Fajardo et al. (2012))
+sigma_x <- 2.12
 
 #--------------------------- Case A ------------------------------------
 
