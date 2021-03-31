@@ -81,7 +81,7 @@ boot_df = pd.read_csv("D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação
 import OLG_A_CRRA as olg
 
 # Example gridspace...
-grida_space = np.zeros(600)
+grida_space = np.zeros(550)
 for a in range(len(grida_space)):
     if a == 0: 
         grida_space[a] = 50
@@ -141,44 +141,48 @@ r_high = 0.048
 # Check if using correct mass grid for z (it must be coherent with gridz imported from PNAD)
 mass_z = np.concatenate((np.repeat(0.1,9),np.repeat(0.02,5))) 
 
+#---------------------------------------- Benchmark CRRA -------------------------------------------
+
 # 1.Computing baseline GE: No temptation, no minimum consumption
 start_time = time.time()
-KL1, w1, C1, x1, y1, V1, choice_a1, distr_mass1, k_mass1, k_total1, c_mass1, c_total1, r1, init_r1 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = xi_1, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = x0_1, temptation = False, tol = 1e-2, maxit = 10000)
+KL1, w1, C1, x1, y1, V1, choice_a1, distr_mass1, k_mass1, k_total1, c_mass1, c_total1, r1, init_r1, U1, T1 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = xi_1, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = x0_1, temptation = False, tol = 1e-2, maxit = 10000)
 end_time = time.time()
 hour = round(((end_time - start_time)/60)//60)
 minute = round((end_time - start_time)//60 - hour*60)
 second = round((end_time - start_time) - hour*60*60 - minute*60)
 print("Finished! \nTime elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
 
-# 2.Computing GE with minimum consumption, but not temptation, matching previous aggregate savings
+#-------------------------------- Exercises with recalibrated Beta ---------------------------------
+
+# 2a.Computing GE with minimum consumption, but not temptation, matching previous aggregate savings
 step = 0.01
 tol = 1e-3
 temptation = False
 beta_equivalent2, results_equivalent2 = olg.ge_match_by_capital(beta, step, tol, k_total1, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi_1, r1, mass_z, transfer, A, x0, temptation)
 
-V2 = results_equivalent2[5]
+V_eq2 = results_equivalent2[5]
 choice_a_eq2 = results_equivalent2[6]
 distr_mass_eq2 = results_equivalent2[7]
 k_mass_eq2 = results_equivalent2[8]
 
-# 3. Computing GE with temptation, but not minimum consumption, matching previous aggregate savings
+# 3a. Computing GE with temptation, but not minimum consumption, matching previous aggregate savings
 step = 0.01
 tol = 1e-3
 temptation = True
 beta_equivalent3, results_equivalent3 = olg.ge_match_by_capital(beta, step, tol, k_total1, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r1, mass_z, transfer, A, x0_1, temptation)
 
-V3 = results_equivalent3[5]
+V_eq3 = results_equivalent3[5]
 choice_a_eq3 = results_equivalent3[6]
 distr_mass_eq3 = results_equivalent3[7]
 k_mass_eq3 = results_equivalent3[8]
 
-# 4.Computing GE with temptation and minimum consumption, matching previous aggregate savings
+# 4a.Computing GE with temptation and minimum consumption, matching previous aggregate savings
 step = 0.01
 tol = 1e-3
 temptation = True
 beta_equivalent4, results_equivalent4 = olg.ge_match_by_capital(beta, step, tol, k_total1, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r1, mass_z, transfer, A, x0, temptation)
 
-V4 = results_equivalent4[5]
+V_eq4 = results_equivalent4[5]
 choice_a_eq4 = results_equivalent4[6]
 distr_mass_eq4 = results_equivalent4[7]
 k_mass_eq4 = results_equivalent4[8]
@@ -186,6 +190,38 @@ k_mass_eq4 = results_equivalent4[8]
 # Results equivalent indexes:
     #  0  1  2  3  4  5      6         7         8       9       10       11     12
     # KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r
+    
+#-------------------------------- Exercises with constant Beta ---------------------------------
+
+# 2b.Computing GE with minimum consumption, but not temptation, matching previous aggregate savings
+temptation = False
+start_time = time.time()
+KL2, w2, C2, x2, y2, V2, choice_a2, distr_mass2, k_mass2, k_total2, c_mass2, c_total2, r2, init_r2, U2, T2 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = xi_1, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = x0, temptation = temptation, tol = 1e-2, maxit = 10000)
+end_time = time.time()
+hour = round(((end_time - start_time)/60)//60)
+minute = round((end_time - start_time)//60 - hour*60)
+second = round((end_time - start_time) - hour*60*60 - minute*60)
+print("Finished! \nTime elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
+
+# 3b.Computing GE with temptation, but not minimum consumption
+temptation = True
+start_time = time.time()
+KL3, w3, C3, x3, y3, V3, choice_a3, distr_mass3, k_mass3, k_total3, c_mass3, c_total3, r3, init_r3, U3, T3 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = xi, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = x0_1, temptation = temptation, tol = 1e-2, maxit = 10000)
+end_time = time.time()
+hour = round(((end_time - start_time)/60)//60)
+minute = round((end_time - start_time)//60 - hour*60)
+second = round((end_time - start_time) - hour*60*60 - minute*60)
+print("Finished! \nTime elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
+
+# 4b.Computing GE with temptation and minimum consumption
+temptation = True
+start_time = time.time()
+KL4, w4, C4, x4, y4, V4, choice_a4, distr_mass4, k_mass4, k_total4, c_mass4, c_total4, r4, init_r4, U4, T4 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r_low, r_high, mass_z, transfer, A, x0, temptation, tol = 1e-2, maxit = 10000)
+end_time = time.time()
+hour = round(((end_time - start_time)/60)//60)
+minute = round((end_time - start_time)//60 - hour*60)
+second = round((end_time - start_time) - hour*60*60 - minute*60)
+print("Finished! \nTime elapsed (Total): ", hour, " h ", minute, "min ", second, "s \n \n")
 
 #%% Plotting
 
@@ -193,6 +229,9 @@ import StatsAndGraphs as stg
 
 # Plotting comparisons
 mass_by_k1, mass_by_age_k1 = stg.capital_distributions(n, grida, gridz, distr_mass1, k_mass1)
+mass_by_k2, mass_by_age_k2 = stg.capital_distributions(n, grida, gridz, distr_mass2, k_mass2)
+mass_by_k3, mass_by_age_k3 = stg.capital_distributions(n, grida, gridz, distr_mass3, k_mass3)
+mass_by_k4, mass_by_age_k4 = stg.capital_distributions(n, grida, gridz, distr_mass4, k_mass4)
 mass_by_k_eq2, mass_by_age_k_eq2 = stg.capital_distributions(n, grida, gridz, distr_mass_eq2, k_mass_eq2)
 mass_by_k_eq3, mass_by_age_k_eq3 = stg.capital_distributions(n, grida, gridz, distr_mass_eq3, k_mass_eq3)
 mass_by_k_eq4, mass_by_age_k_eq4 = stg.capital_distributions(n, grida, gridz, distr_mass_eq4, k_mass_eq4)
@@ -202,8 +241,8 @@ mass_by_k_eq4, mass_by_age_k_eq4 = stg.capital_distributions(n, grida, gridz, di
 # 2 - Stone-Geary
 # 3 - Temptation
 # 4 - Stone-Geary + Temptation
-stg.compare_total_k_distr(mass_by_k1, mass_by_k_eq2, mass_by_k_eq4, grida, bin_size = 3000, description = "Calibration (B)", label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "+Temptation", log = False, trim_upper = True, trim_value = 600000)
-stg.compare_total_k_lorenz(mass_by_k1, mass_by_k_eq2, mass_by_k_eq4, grida, description = "Calibration (B)", label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "+Temptation")
+stg.compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size = 3000, description = "Fixed beta", label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "Temptation", log = False, trim_upper = True, trim_value = 600000)
+stg.compare_total_k_lorenz(mass_by_k1, mass_by_k2, mass_by_k3, grida, description = "Fixed beta", label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "Temptation")
 
 # Comparing lifecycle average savings
 age_start = 25
@@ -212,11 +251,11 @@ include_interest = True
 n_select = n-5 # Dissavings at the end of life are huge, making visualization poor
 
 quant_value_nt, quant_value_eq = stg.compare_savings_rate(age_start, n, n_select, quants, grida, gridz, \
-                                                          r1, r1, r1, \
-                                                          choice_a1, choice_a_eq2, choice_a_eq3, \
-                                                          distr_mass1, distr_mass_eq2, distr_mass_eq3, \
+                                                          r1, r2, r3, \
+                                                          choice_a1, choice_a2, choice_a3, \
+                                                          distr_mass1, distr_mass2, distr_mass3, \
                                                           include_interest, \
-                                                          description1 = "Baseline CRRA", description2 = "Non-homothetic", description3 = "Temptation")
+                                                          description1 = "Baseline CRRA", description2 = "Minimum Consumption", description3 = "Temptation")
 
 
 quants = np.array([0.5,0.9,0.99])
@@ -235,6 +274,9 @@ savings_eq.to_csv("D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação\Tem
 
 # Wealth Gini
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass1, k_mass1)
+olg.calculate_wealth_gini(n, grida, gridz, distr_mass2, k_mass2)
+olg.calculate_wealth_gini(n, grida, gridz, distr_mass3, k_mass3)
+olg.calculate_wealth_gini(n, grida, gridz, distr_mass4, k_mass4)
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass_eq2, k_mass_eq2)
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass_eq3, k_mass_eq3)
 olg.calculate_wealth_gini(n, grida, gridz, distr_mass_eq4, k_mass_eq4)
@@ -244,6 +286,9 @@ show_zero = True
 quants = np.array([0.5,0.9, 0.95, 0.99])
 
 stg.savings_and_wealth_report(n, mass_by_k1, grida, quants, distr_mass1, show_zero)
+stg.savings_and_wealth_report(n, mass_by_k2, grida, quants, distr_mass2, show_zero)
+stg.savings_and_wealth_report(n, mass_by_k3, grida, quants, distr_mass3, show_zero)
+stg.savings_and_wealth_report(n, mass_by_k4, grida, quants, distr_mass4, show_zero)
 stg.savings_and_wealth_report(n, mass_by_k_eq2, grida, quants, distr_mass_eq2, show_zero)
 stg.savings_and_wealth_report(n, mass_by_k_eq3, grida, quants, distr_mass_eq3, show_zero)
 stg.savings_and_wealth_report(n, mass_by_k_eq4, grida, quants, distr_mass_eq4, show_zero)
@@ -266,3 +311,19 @@ k_supply3 = olg.compute_k_supply_curve(n, beta_equivalent3, delta, alpha, Pi, gr
 k_demand = olg.compute_k_demand_curve(grid_r, delta, w1, A, gridz, mass_z, n, alpha)
 
 stg.plot_k_curves(k_supply1 ,k_supply2, k_supply3, grid_r, k_demand, label1 = "Baseline CRRA", label2 = "Non-homothetic", label3 = "Temptation")
+
+# ------------------------------ Rascunhos -----------------------------------
+
+# Getting dxdc graph to determine temptation tax
+
+import matplotlib.pyplot as plt
+import Temptation_CRRA as tpt
+
+C = np.arange(0,2000*12,1*12)*1.0
+x, y, frac, dxdc = tpt.calculate_allocation_by_C(C, x0_1, sigma_x, sigma_y, xi)
+
+plt.plot(C/12,dxdc)
+plt.ylabel('dx(c)/dc')
+plt.xlabel('Consumption (R$ montlhy p.c.)')
+plt.title('Temptation intertemporal tax')
+

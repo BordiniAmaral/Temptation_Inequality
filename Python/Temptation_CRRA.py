@@ -136,8 +136,3 @@ def calculate_allocation_by_C(C, x0, sigma_x, sigma_y, xi):
                 dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
     
     return x, y, frac, dxdc
-
-
-
-
-

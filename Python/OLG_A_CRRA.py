@@ -130,10 +130,15 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                     # when Aux starts to move away from (local) maximum.
                     # Rule (arbitrary): 5 consecutive decreases to Aux with
                     # decreasing a2 below minimum consumption
+                    # (remove ''' to use this mechanism and substitute iterator to below)
+                    ## range(a_possible_index-1,-1,-1)
+                    '''
                     decreasing = 0
-                    for a2 in range(a_possible_index-1,-1,-1): ##  range(len(grida))
+                    '''
+                    for a2 in range(len(grida)):
                         Aux[z1,a1,a2] = U[z1,a1,a2,period] + T[z1,a1,a2,period] + beta*V_next[z1,a2]
                         
+                        '''
                         if a2 < a_possible_index-1:
                             if (minimum_indexes.size == 0):
                                 if Aux[z1,a1,a2] < Aux[z1,a1,a2+1]:
@@ -149,6 +154,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                         if decreasing >= 5:
                             Aux[z1,a1,:a2] = -np.Inf
                             break
+                        '''
                     
                     # Applying rule:
                         # For positive future assets, picking only the highest feasible option
@@ -170,7 +176,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                     choice_a[period,z1,a1] = np.argmax(Aux[z1,a1,:])
 
     print("Backwards iteration concluded ")
-    return V, choice_a
+    return V, choice_a, U, T
 
 @njit
 def aggregate_capital(grida, distr_mass, gridz, n):
@@ -242,7 +248,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     # Testing lower r (and updating upper r when appropriate)
     while not adequate_r:
         print("\nTesting r:",init_r[0])
-        KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[0], mass_z, transfer, A, temptation, x0)
+        KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[0], mass_z, transfer, A, temptation, x0)
         
         L_total = zsum / w # zsum is total salary mass considering the ranges in POF
         KLs = k_total / L_total
@@ -272,7 +278,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
         adequate_r = False
         while not adequate_r:
             print("\nTesting r:",init_r[1])
-            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[1], mass_z, transfer, A, temptation, x0)
+            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[1], mass_z, transfer, A, temptation, x0)
             
             L_total = zsum / w # zsum is total salary mass considering the ranges in POF
             KLs = k_total / L_total
@@ -303,7 +309,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
             
             r = (r_high + r_low)/2 
          
-            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
+            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
             
             L_total = zsum / w
             KLs = k_total / L_total
@@ -328,7 +334,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     else:
         return None
     
-    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r
+    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, init_r, U, T
 
 @njit
 def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0):
@@ -343,14 +349,28 @@ def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, m
     C, x, y = tpt.create_allocation_grid_by_age(grida, gridz_new, xi, sigma_x, sigma_y, w, r, n, transfer, x0)
     
     # Solving lifecycle
-    V, choice_a = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
+    V, choice_a, U, T = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
     
     # Aggregating capital and consumption
     distr_mass = stationary_distribution(choice_a, grida, gridz_new, mass_z, Pi, n)
     k_mass, k_total = aggregate_capital(grida, distr_mass, gridz_new, n)
     c_mass, c_total = aggregate_consumption(distr_mass, grida, gridz_new, n, C, choice_a)
     
-    return KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total
+    # Defining actual chosen consumption and utility on each state
+    x_opt = np.zeros(shape = (n,len(gridz),len(grida)))
+    y_opt = np.zeros(shape = (n,len(gridz),len(grida)))
+    U_opt = np.zeros(shape = (n,len(gridz),len(grida)))
+    T_opt = np.zeros(shape = (n,len(gridz),len(grida)))
+    
+    for period in range(n):
+        for z1 in range(len(gridz)):
+            for a1 in range(len(grida)):
+                x_opt[period,z1,a1] = x[z1,a1,int(choice_a[period,z1,a1]),period]
+                y_opt[period,z1,a1] = y[z1,a1,int(choice_a[period,z1,a1]),period]
+                U_opt[period,z1,a1] = U[z1,a1,int(choice_a[period,z1,a1]),period]
+                T_opt[period,z1,a1] = T[z1,a1,int(choice_a[period,z1,a1]),period]
+    
+    return KL, w, C, x_opt, y_opt, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, U_opt, T_opt
 
 def calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass):
     
@@ -397,7 +417,7 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
     # Testing beta0
     while not beta_low_found:
         
-        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta0, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, U, T = run_once(n, beta0, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
         error = (k_total - k_target) / k_target
         
         if error < 0:
@@ -419,7 +439,7 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
             beta = (beta_high + beta_low)/2
         print("\n** Starting iteration ",count,"of capital matching**\n     Current guess:",beta)
         
-        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0)
         
         error = (k_total - k_target) / k_target
         
@@ -443,7 +463,7 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
             print("\n\n**Bissection concluded**\nBeta = ",np.round(beta,3),"\nError = ",np.round(error,6))
         count = count + 1
     
-    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r)
+    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_mass, c_total, r, U, T)
     
     return beta, results
             
@@ -464,7 +484,7 @@ def compute_k_supply_curve(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sig
         C, x, y = tpt.create_allocation_grid_by_age(grida, gridz_new, xi, sigma_x, sigma_y, w, grid_r[r], n, transfer, x0)
         
         # Solving lifecycle
-        V, choice_a = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
+        V, choice_a, U, T = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
         
         # Aggregating capital and consumption
         distr_mass = stationary_distribution(choice_a, grida, gridz_new, mass_z, Pi, n)
@@ -488,6 +508,33 @@ def compute_k_demand_curve(grid_r, delta, w, A, gridz, mass_z, n, alpha):
     
     return k_demand
 
-# Write this if you want to check how strong is the difference of counting or not temptation
-def compute_temptation_discount(V,choice_a,grida,gridz,Pi):
-    return None
+
+# --------- Not sure if computing below makes any sense ----------------------------
+
+@njit
+def compute_temptation_discount(V,choice_a,grida,gridz,Pi,n,y, xi, sigma_x, sigma_y, x0):
+    
+    V_next_full = np.zeros(shape = (len(gridz),len(grida),n-1))
+    V_next_expc = np.zeros(shape = (len(gridz),len(grida),n-1))
+    T = np.zeros(shape = (len(gridz),len(grida),n))
+    
+    bound =  x0 + 1 # Bounding CRRA by evaluating only up to a close distance from minimum value
+    x_bound = tpt.Newton(tpt.f,tpt.df,(x0 + 0.0001),1e-6,int(1e6), bound, xi, sigma_x, sigma_y, x0)
+    y_bound = bound - x_bound
+    
+    for period in range(n):
+        for z1 in range(len(gridz)):
+            for a1 in range(len(grida)):
+                T[z1,a1,period] = tpt.calculate_T(y[z1,a1,int(choice_a[period,z1,a1]),period], sigma_y, xi, y_bound)
+    
+    for period in range(n-1):
+        for z1 in range(len(gridz)):
+            for a1 in range(len(grida)):
+                a2_chosen = int(choice_a[period,z1,a1])
+                for z2 in range(len(gridz)):
+                    V_next_expc[z1,a1,period] = V_next_expc[z1,a1,period] + Pi[z1,z2]*(V[period+1,z2,a2_chosen] - T[z2,a2_chosen,int(choice_a[period+1,z2,a2_chosen]),period+1])
+                    V_next_full[z1,a1,period] = V_next_full[z1,a1,period] + Pi[z1,z2]*(V[period+1,z2,a2_chosen])
+                    
+    tpt_discount = V_next_expc / V_next_full
+    
+    return V_next_expc, V_next_full, tpt_discount, T

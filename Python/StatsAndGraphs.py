@@ -140,11 +140,11 @@ def compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size, d
     # Plotting graph for total k distribution
     
     plt.figure(figsize=(7,7))
-    plt.fill_between(a_plot_grid, 0, smooth_a1, color = 'black', alpha = 0.2)
+    plt.fill_between(a_plot_grid, 0, smooth_a1, color = 'black', alpha = 0.1)
     plt.plot(a_plot_grid, smooth_a1, label = label1)
-    plt.fill_between(a_plot_grid, 0, smooth_a2, color = 'black', alpha = 0.2)
+    plt.fill_between(a_plot_grid, 0, smooth_a2, color = 'black', alpha = 0.1)
     plt.plot(a_plot_grid, smooth_a2, label = label2)
-    plt.fill_between(a_plot_grid, 0, smooth_a3, color = 'black', alpha = 0.2)
+    plt.fill_between(a_plot_grid, 0, smooth_a3, color = 'black', alpha = 0.1)
     plt.plot(a_plot_grid, smooth_a3, label = label3)
     plt.ylabel('Mass of agents')
     plt.xlabel('Log '*log + 'Wealth')
