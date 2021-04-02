@@ -81,16 +81,16 @@ boot_df = pd.read_csv("D:\Google Drive\Working Cloud\EESP-Mestrado\Dissertação
 import OLG_A_CRRA as olg
 
 # Example gridspace...
-grida_space = np.zeros(550)
+grida_space = np.zeros(600)
 for a in range(len(grida_space)):
     if a == 0: 
-        grida_space[a] = 50
-    elif a < 12:
-        grida_space[a] = grida_space[a-1]+50
-    elif a < 106:
-        grida_space[a] = grida_space[a-1]+100
+        grida_space[a] = 30
+    #elif a < 18:
+    #    grida_space[a] = grida_space[a-1]+30
+    #elif a < 106:
+    #    grida_space[a] = grida_space[a-1]+60
     else:
-        grida_space[a] = grida_space[a-1]*1.01
+        grida_space[a] = grida_space[a-1]*1.017
 
 grida = np.concatenate((-np.flip(grida_space[0:(np.int(len(grida_space)/150))]),[0],grida_space))
 
@@ -241,8 +241,16 @@ mass_by_k_eq4, mass_by_age_k_eq4 = stg.capital_distributions(n, grida, gridz, di
 # 2 - Stone-Geary
 # 3 - Temptation
 # 4 - Stone-Geary + Temptation
-stg.compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size = 3000, description = "Fixed beta", label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "Temptation", log = False, trim_upper = True, trim_value = 600000)
-stg.compare_total_k_lorenz(mass_by_k1, mass_by_k2, mass_by_k3, grida, description = "Fixed beta", label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "Temptation")
+trim_value = 100000
+description = "Fixed Aggregate Savings"
+mass1 = mass_by_k1
+label1 = "Baseline CRRA"
+mass2 = mass_by_k_eq2
+label2 = "Minimum Consumption"
+mass3 = mass_by_k_eq3
+label3 = "Temptation"
+stg.compare_total_k_distr(mass1, mass2, mass3, grida, bin_size = 3000, description = description, label1 = label1, label2 = label2, label3 = label3, log = False, trim_upper = True, trim_value = trim_value)
+stg.compare_total_k_lorenz(mass1, mass2, mass3, grida, description, label1, label2, label3)
 
 # Comparing lifecycle average savings
 age_start = 25
@@ -305,12 +313,12 @@ fraction_sim = cb.compute_sim_tempt_frac(data_x, data_y, x0, gam1, gam2, gridq, 
 
 grid_r = np.arange(0.037,0.055,0.001)
 k_supply1 = olg.compute_k_supply_curve(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi_1, grid_r, r1, mass_z, transfer, A, temptation = False, x0 = x0_1)
-k_supply2 = olg.compute_k_supply_curve(n, beta_equivalent2, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r, r1, mass_z, transfer, A, temptation = False, x0 = x0)
-k_supply3 = olg.compute_k_supply_curve(n, beta_equivalent3, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r, r1, mass_z, transfer, A, temptation = True, x0 = x0)
+k_supply2 = olg.compute_k_supply_curve(n, beta_equivalent2, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi_1, grid_r, r1, mass_z, transfer, A, temptation = False, x0 = x0)
+k_supply3 = olg.compute_k_supply_curve(n, beta_equivalent3, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, grid_r, r1, mass_z, transfer, A, temptation = True, x0 = x0_1)
 
 k_demand = olg.compute_k_demand_curve(grid_r, delta, w1, A, gridz, mass_z, n, alpha)
 
-stg.plot_k_curves(k_supply1 ,k_supply2, k_supply3, grid_r, k_demand, label1 = "Baseline CRRA", label2 = "Non-homothetic", label3 = "Temptation")
+stg.plot_k_curves(k_supply1 ,k_supply2, k_supply3, grid_r, k_demand, label1 = "Baseline CRRA", label2 = "Minimum Consumption", label3 = "Temptation")
 
 # ------------------------------ Rascunhos -----------------------------------
 
@@ -319,11 +327,20 @@ stg.plot_k_curves(k_supply1 ,k_supply2, k_supply3, grid_r, k_demand, label1 = "B
 import matplotlib.pyplot as plt
 import Temptation_CRRA as tpt
 
-C = np.arange(0,2000*12,1*12)*1.0
-x, y, frac, dxdc = tpt.calculate_allocation_by_C(C, x0_1, sigma_x, sigma_y, xi)
+C = np.arange(0.1,2000*12,1*12)*1.0
+x, y, U, T, frac, dxdc, dudc, dtdc, dudx, dtdy = tpt.calculate_allocation_by_C(C, x0_1, sigma_x, sigma_y, xi)
 
-plt.plot(C/12,dxdc)
+plt.figure(figsize=(7,7))
+plt.plot(C/12,dxdc, label = 'dx(c)/dc')
 plt.ylabel('dx(c)/dc')
 plt.xlabel('Consumption (R$ montlhy p.c.)')
+plt.legend()
 plt.title('Temptation intertemporal tax')
 
+
+plt.figure(figsize=(7,7))
+plt.plot(C[80:120]/12, (dudc+dtdc)[80:120], label = "Period t      : [d(U+T)/dc] (c)")
+plt.plot(C[80:120]/12, beta*dudc[80:120], label = "Period t+1 : \u03B2[dU(x)/dx * dx(c)/dc] (c)", linestyle='--')
+plt.legend()
+plt.title('Consumption today vs. Consumption tomorrow')
+plt.xlabel('Total Consumption (R$ montlhy p.c.)')

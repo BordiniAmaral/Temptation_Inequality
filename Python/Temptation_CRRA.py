@@ -112,27 +112,58 @@ def calculate_allocation_by_C(C, x0, sigma_x, sigma_y, xi):
     y = np.zeros(shape = len(C))
     frac = np.zeros(shape = len(C))
     dxdc = np.zeros(shape = len(C))
-    dxdc[0] = 1
+    dudc = np.zeros(shape = len(C))
+    dtdc = np.zeros(shape = len(C))
+    dudx = np.zeros(shape = len(C))
+    dtdy = np.zeros(shape = len(C))
+    U = np.zeros(len(C))
+    T = np.zeros(len(C))
+    
+    bound =  x0 + 1 # Bounding CRRA by evaluating only up to a close distance from minimum value
+    x_bound = Newton(f,df,(x0 + 0.0001),1e-6,int(1e6), bound, xi, sigma_x, sigma_y, x0)
+    y_bound = bound - x_bound
     
     for i in range(len(C)):
         if C[i] <= 1 or xi == 0:
             C[i] = max([C[i],0])
             x[i] = max([C[i],0])
             y[i] = 0
+            U[i] = calculate_U(x[i], sigma_x, x0, x_bound)
+            T[i] = calculate_T(y[i], sigma_y, xi, y_bound)
             if i > 0:
                 dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
+                dudc[i] = (U[i]-U[i-1]) / (C[i]-C[i-1])
+                dtdc[i] = (T[i]-T[i-1]) / (C[i]-C[i-1])
+                dudx[i] = (U[i]-U[i-1]) / (x[i]-x[i-1])
+                dtdy[i] = (T[i]-T[i-1]) / (y[i]-y[i-1])
             next
         elif C[i] <= x0 + 1:
             C[i] = C[i]
             x[i] = C[i]
             y[i] = 0
+            U[i] = calculate_U(x[i], sigma_x, x0, x_bound)
+            T[i] = calculate_T(y[i], sigma_y, xi, y_bound)
             if i > 0:
                 dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
+                dudc[i] = (U[i]-U[i-1]) / (C[i]-C[i-1])
+                dtdc[i] = (T[i]-T[i-1]) / (C[i]-C[i-1])
+                dudx[i] = (U[i]-U[i-1]) / (x[i]-x[i-1])
+                dtdy[i] = (T[i]-T[i-1]) / (y[i]-y[i-1])
         else:
             x[i] = Newton(f,df,(x0 + 0.0001),1e-6,int(1e6),C[i], xi, sigma_x, sigma_y, x0)
             y[i] = C[i] - x[i]
             frac[i] = y[i] / C[i]
+            U[i] = calculate_U(x[i], sigma_x, x0, x_bound)
+            T[i] = calculate_T(y[i], sigma_y, xi, y_bound)
             if i > 0:
                 dxdc[i] = (x[i]-x[i-1]) / (C[i]-C[i-1])
+                dudc[i] = (U[i]-U[i-1]) / (C[i]-C[i-1])
+                dtdc[i] = (T[i]-T[i-1]) / (C[i]-C[i-1])
+                dudx[i] = (U[i]-U[i-1]) / (x[i]-x[i-1])
+                dtdy[i] = (T[i]-T[i-1]) / (y[i]-y[i-1])
     
-    return x, y, frac, dxdc
+    dxdc[0] = dxdc[1]
+    dudc[0] = dudc[1]
+    dtdc[0] = dtdc[1]
+    
+    return x, y, U, T, frac, dxdc, dudc, dtdc, dudx, dtdy
