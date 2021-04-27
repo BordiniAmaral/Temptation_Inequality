@@ -63,7 +63,7 @@ def Newton(f, df, x_init, e, maxit, c, xi, sigma_x, sigma_y, x0):
     return None  
 
 @njit
-def create_allocation_grid_by_age(grida, gridz, xi, sigma_x, sigma_y, w, r, n, transfer, x0):
+def create_allocation_grid_by_age(grida, gridz, xi, sigma_x, sigma_y, w, r, n, transfer, x0, inv_cost):
     
     print("Starting allocation grids by age...")
     
@@ -79,7 +79,7 @@ def create_allocation_grid_by_age(grida, gridz, xi, sigma_x, sigma_y, w, r, n, t
         for age in range(n):
             for z in range(len(gridz)):
                 for a2 in range(len(grida)):
-                    C[z,a1,a2,age] = w*gridz[z,age] + (1+r)*grida[a1] - grida[a2] + (transfer - w*gridz[z,age])*(w*gridz[z,age] < transfer)
+                    C[z,a1,a2,age] = w*gridz[z,age] + (1+r)*grida[a1] - grida[a2] + (transfer - w*gridz[z,age])*(w*gridz[z,age] < transfer) - inv_cost*(grida[a2] != 0)
                     if C[z,a1,a2,age] <= 1 or xi == 0:
                         C[z,a1,a2:,age] = max([C[z,a1,a2,age],0])
                         x[z,a1,a2:,age] = max([C[z,a1,a2,age],0])
@@ -148,7 +148,6 @@ def calculate_allocation_by_C(C, x0, sigma_x, sigma_y, xi):
                 dudc[i] = (U[i]-U[i-1]) / (C[i]-C[i-1])
                 dtdc[i] = (T[i]-T[i-1]) / (C[i]-C[i-1])
                 dudx[i] = (U[i]-U[i-1]) / (x[i]-x[i-1])
-                dtdy[i] = (T[i]-T[i-1]) / (y[i]-y[i-1])
         else:
             x[i] = Newton(f,df,(x0 + 0.0001),1e-6,int(1e6),C[i], xi, sigma_x, sigma_y, x0)
             y[i] = C[i] - x[i]
