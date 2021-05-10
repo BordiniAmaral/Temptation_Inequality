@@ -29,7 +29,7 @@ def capital_distributions(n, grida, gridz, distr_mass, k_mass):
         for period in range(n):
             mass_by_age_k[period,a] = np.sum(distr_mass[period,:,a]) / lifecycle_mass
     
-    return mass_by_k, mass_by_age_k
+    return mass_by_k, mass_by_age_k                        
 
 def plot_total_k_distr(mass_by_k, grida, bin_size, description):
     
@@ -150,7 +150,8 @@ def compare_total_k_distr(mass_by_k1, mass_by_k2, mass_by_k3, grida, bin_size, d
     plt.xlabel('Log '*log + 'Wealth')
     plt.title('Capital Distribution - '+ description)
     plt.legend(title = "Distributions")
-    
+
+
 def compare_total_k_lorenz(mass_by_k1, mass_by_k2, mass_by_k3, grida, description, label1, label2, label3):
     
     cum_mass_by_k1 = np.cumsum(mass_by_k1)
@@ -458,3 +459,59 @@ def plot_k_curves(k_supply1 ,k_supply2, k_supply3, grid_r, k_demand, label1, lab
         top=False,         # ticks along the top edge are off
         labelbottom=False) # labels along the bottom edge are off
     fig.show()
+
+def beta_euler_observed(beta, Pi, c_opt, dudx, grida, gridz, n, gridc, choice_a, r):
+    
+    beta_observed = np.zeros(shape = (n-1, len(gridz), len(grida)))
+    
+    for age in range(n-1):
+        for a1 in range(len(grida)):
+            for z1 in range(len(gridz)):
+                sum_euler = 0.0
+                a2 = int(choice_a[age,z1,a1])
+                c1_idx = (np.abs(gridc-c_opt[age,z1,a1])).argmin()
+                for z2 in range(len(gridz)):
+                    
+                    c2_idx = (np.abs(gridc-c_opt[age+1,z2,a2])).argmin()
+                    
+                    sum_euler = sum_euler +  Pi[z1,z2]*dudx[c2_idx]
+                
+                beta_observed[age,z1,a1] = dudx[c1_idx] / ((1+r)*sum_euler)
+        print(np.floor(age/(n-1)*100),"% concluded")
+    
+    return beta_observed
+
+def beta_dV_observed(dVnext_tp, dudx, c_opt, gridc, V_nt, choice_a, Pi, grida, gridz, n):
+    
+    dVnext_nt = np.zeros(shape = (n-1, len(gridz), len(grida))) # Starting full V of next period
+    beta_observed_nt = np.zeros(shape = (n-1, len(gridz), len(grida))) # using full V of next period
+    beta_observed_tp = np.zeros(shape = (n-1, len(gridz), len(grida))) # using tempt. Vnext
+    
+    for age in range(n-1):
+        for a1 in range(len(grida)):
+            for z1 in range(len(gridz)):
+                a2 = int(choice_a[age,z1,a1])
+                c1_idx = (np.abs(gridc-c_opt[age,z1,a1])).argmin()
+                for z2 in range(len(gridz)):
+                    
+                    # Checking exception for forward difference
+                    if a2 < len(grida)-1:
+                        dVf = (V_nt[age,z2,a2+1] - V_nt[age,z2,a2]) / (grida[a2+1]-grida[a2])
+                    else:
+                        dVf = (V_nt[age,z2,a2] - V_nt[age,z2,a2-1]) / (grida[a2]-grida[a2-1])
+                    
+                    # Checking exception for backward difference
+                    if a2 != 0:
+                        dVb = (V_nt[age,z2,a2] - V_nt[age,z2,a2-1]) / (grida[a2]-grida[a2-1])
+                    else:
+                        dVb = (V_nt[age,z2,a2+1] - V_nt[age,z2,a2]) / (grida[a2+1]-grida[a2])
+                    
+                    dVnext_nt[age,z1,a1] = dVnext_nt[age,z1,a1] + Pi[z1,z2]*((dVf + dVb) / 2)
+                
+                beta_observed_nt[age,z1,a1] = dudx[c1_idx] / dVnext_nt[age,z1,a1]
+                beta_observed_tp[age,z1,a1] = dudx[c1_idx] / dVnext_tp[age,z1,a1]
+        print(np.floor(age/(n-1)*100),"% concluded")
+    
+    return beta_observed_nt, beta_observed_tp, dVnext_nt
+
+                

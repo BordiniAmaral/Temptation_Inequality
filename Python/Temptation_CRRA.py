@@ -20,12 +20,12 @@ from numba import njit
 def calculate_U(x,sigma_x, x0, x_bound):
     
     if x > x_bound:
-        U = (x-x0)**(1 - sigma_x) / (1-sigma_x)
+        Uc = (x-x0)**(1 - sigma_x) / (1-sigma_x)
     elif x > 0:
-        U = (x_bound-x0)**(1 - sigma_x) / (1-sigma_x)
+        Uc = (x_bound-x0)**(1 - sigma_x) / (1-sigma_x)
     else:
-        U = -np.Inf
-    return U
+        Uc = -np.Inf
+    return Uc
 
 @njit
 def calculate_T(y, sigma_y, xi, y_bound):
@@ -51,7 +51,7 @@ def Newton(f, df, x_init, e, maxit, c, xi, sigma_x, sigma_y, x0):
     xn = x_init
     for n in range(0,maxit):
         fxn = f(xn, c, xi, sigma_x, sigma_y, x0)
-        if abs(fxn)<e:
+        if np.abs(fxn)<e:
             return xn
         dfxn = df(xn, c, xi, sigma_x, sigma_y, x0)
         if dfxn == 0:

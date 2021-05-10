@@ -159,13 +159,13 @@ inv_cost = 0
 
 A = 1 
 r_low = 0.04
-r_high = 0.1
+r_high = 0.06
 
 #---------------------------------------- Benchmark CRRA -------------------------------------------
 
 # 1.Computing baseline GE: No temptation, no minimum consumption
 start_time = time.time()
-KL1, w1, C1, x1, y1, V1, choice_a1, distr_mass1, k_mass1, k_total1, c_opt1, r1, init_r1, U1, T1 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = xi_1, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = x0_1, inv_cost = inv_cost, temptation = False, tol = 1e-2, maxit = 10000)
+KL1, w1, C1, x1, y1, V1, choice_a1, distr_mass1, k_mass1, k_total1, c_opt1, r1, init_r1, U1, T1, dVnext1 = olg.general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi = xi_1, r_low = r_low, r_high = r_high, mass_z = mass_z, transfer = transfer, A = A, x0 = x0_1, inv_cost = inv_cost, temptation = False, tol = 1e-2, maxit = 10000)
 end_time = time.time()
 hour = round(((end_time - start_time)/60)//60)
 minute = round((end_time - start_time)//60 - hour*60)
@@ -186,10 +186,11 @@ distr_mass_eq2 = results_equivalent2[7]
 k_mass_eq2 = results_equivalent2[8]
 k_total_eq2 = results_equivalent2[9]
 c_opt_eq2 = results_equivalent2[10]
+dVnext_eq2 = results_equivalent2[14]
 
 # 3a. Computing GE with temptation, but not minimum consumption, matching previous aggregate savings
 step = 0.01
-tol = 5e-3
+tol = 1e-3
 temptation = True
 beta_equivalent3, results_equivalent3 = olg.ge_match_by_capital(beta, step, tol, k_total1, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r1, mass_z, transfer, A, x0_1, temptation, inv_cost)
 
@@ -199,11 +200,12 @@ distr_mass_eq3 = results_equivalent3[7]
 k_mass_eq3 = results_equivalent3[8]
 k_total_eq3 = results_equivalent3[9]
 c_opt_eq3 = results_equivalent3[10]
+dVnext_eq3 = results_equivalent3[14]
 
 '''
 # 4a.Computing GE with temptation and minimum consumption, matching previous aggregate savings
 step = 0.01
-tol = 5e-3
+tol = 1e-3
 temptation = True
 beta_equivalent4, results_equivalent4 = olg.ge_match_by_capital(beta, step, tol, k_total1, n, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r1, mass_z, transfer, A, x0, temptation, inv_cost)
 
@@ -212,12 +214,13 @@ choice_a_eq4 = results_equivalent4[6]
 distr_mass_eq4 = results_equivalent4[7]
 k_mass_eq4 = results_equivalent4[8]
 k_total_eq4 = results_equivalent4[9]
-c_opt_eq3 = results_equivalent3[10]
+c_opt_eq4 = results_equivalent4[10]
+dVnext_eq4 = results_equivalent4[14]
 '''
 
 # Results equivalent indexes:
-    #  0  1  2  3  4  5      6         7         8       9       10    11  
-    # KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt,  r
+    #  0  1  2  3  4  5      6         7         8       9       10   11  12 13   14
+    # KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, r, U, T, dVnext
     
 #-------------------------------- Exercises with constant Beta ---------------------------------
 
@@ -360,30 +363,96 @@ import Temptation_CRRA as tpt
 xi1 = 0.2494
 sigma_x1 = 2.17
 sigma_y1 = 2.67
-x01 = 133*12
+x01 = 0
 
 xi2 = 2.7e5
 sigma_x2 = 2.17
 sigma_y2 = 4.34
-x02 = 133*12
+x02 = 0
 
-C = np.arange(134*12,3000*12,1*12)*1.0
-x1, y1, U1, T1, frac1, dxdc1, dudc1, dtdc1, dudx1, dtdy1 = tpt.calculate_allocation_by_C(C, x01, sigma_x1, sigma_y1, xi1)
-x2, y2, U2, T2, frac2, dxdc2, dudc2, dtdc2, dudx2, dtdy2 = tpt.calculate_allocation_by_C(C, x02, sigma_x2, sigma_y2, xi2)
+gridc = np.arange(0*12,3000*12,1*12)*1.0
+x1, y1, U1, T1, frac1, dxdc1, dudc1, dtdc1, dudx1, dtdy1 = tpt.calculate_allocation_by_C(gridc, x01, sigma_x1, sigma_y1, xi1)
+x2, y2, U2, T2, frac2, dxdc2, dudc2, dtdc2, dudx2, dtdy2 = tpt.calculate_allocation_by_C(gridc, x02, sigma_x2, sigma_y2, xi2)
 
 plt.figure(figsize=(7,7))
-plt.plot(C/12,dxdc1, label = 'dx(c)/dc (calibration)')
-plt.plot(C/12,dxdc2, label = 'dx(c)/dc (alternative)')
+plt.plot(gridc/12,dxdc1, label = 'dx(c)/dc (calibration)')
+plt.plot(gridc/12,dxdc2, label = 'dx(c)/dc (alternative)')
 plt.ylabel('dx(c)/dc')
-plt.xlabel('C.onsumption (R$ montlhy p.c.)')
+plt.xlabel('Consumption (R$ montlhy p.c.)')
 plt.legend()
 plt.ylim([0.6, 1])
 plt.title('Temptation intertemporal tax')
-
+plt.show()
 
 plt.figure(figsize=(7,7))
-plt.plot(C[80:120]/12, (dudc+dtdc)[80:120], label = "Period t      : [d(U+T)/dc] (c)")
-plt.plot(C[80:120]/12, beta*dudc[80:120], label = "Period t+1 : \u03B2[dU(x)/dx * dx(c)/dc] (c)", linestyle='--')
-plt.legend()
-plt.title('Consumption today vs. Consumption tomorrow')
-plt.xlabel('Total Consumption (R$ montlhy p.c.)')
+plt.plot(gridc/12,(1-dxdc1))
+plt.ylabel(r'$1 - \partial x(c)/ \partial c$')
+plt.xlabel('Consumption (R$ montlhy p.c.)')
+plt.ylim([0, 0.3])
+plt.show()
+
+# ------------------------------ Rascunhos -----------------------------------
+
+import matplotlib.pyplot as plt
+from scipy.interpolate import make_interp_spline
+
+# Plotting consumption distribution
+bin_size = 1000
+c_spline_grid = np.arange(0, np.max(c_opt_eq3), bin_size)
+c_plot_values = np.zeros(len(c_spline_grid))
+distr_clean = distr_mass_eq3[:n,:,:]
+
+for c in range(len(c_spline_grid)):
+    c_plot_values[c] = np.sum(distr_clean[abs(c_opt1[:n,:,:] - c_spline_grid[c]) < (bin_size/2)])
+    
+spl = make_interp_spline(c_spline_grid, c_plot_values, k = 3)
+
+c_plot_grid = np.arange(0, 100000, 30)
+smooth = spl(c_plot_grid)
+
+plt.figure(figsize=(7,7))
+plt.fill_between(c_plot_grid/12, 0, smooth, color = 'black', alpha = 0.1)
+plt.plot(c_plot_grid/12, smooth)
+plt.ylabel('Mass of agents')
+plt.xlabel('Monthly consumption per capita')
+plt.title('Tpt 3')
+plt.show()
+
+# ------------------------------ Rascunhos -----------------------------------
+
+import StatsAndGraphs as stg
+
+beta_observed3 = stg.beta_euler_observed(beta_equivalent3, Pi, c_opt_eq3, dudx1, grida, gridz, n, gridc, choice_a_eq3, r1)
+beta_observed_nt, beta_observed_tp, dVnext_nt = stg.beta_dV_observed(dVnext_eq4, dudx1, c_opt_eq4, gridc, V_eq2, choice_a_eq4, Pi, grida, gridz, n)
+
+import matplotlib.pyplot as plt
+from scipy.interpolate import make_interp_spline
+
+# Plotting observed beta distribution
+bin_size = 0.01
+beta_spline_grid = np.arange(0.5, 1.2, bin_size)
+beta_plot_values_nt = np.zeros(len(beta_spline_grid))
+beta_plot_values_tp = np.zeros(len(beta_spline_grid))
+distr_clean = distr_mass_eq3[:n-1,:,:]
+
+for b in range(len(beta_spline_grid)):
+    beta_plot_values_nt[b] = np.sum(distr_clean[abs(beta_observed_nt - beta_spline_grid[b]) < (bin_size/2)])
+    beta_plot_values_tp[b] = np.sum(distr_clean[abs(beta_observed_tp - beta_spline_grid[b]) < (bin_size/2)])
+    
+spl_nt = make_interp_spline(beta_spline_grid, beta_plot_values_nt, k = 3)
+spl_tp = make_interp_spline(beta_spline_grid, beta_plot_values_tp, k = 3)
+
+beta_plot_grid = np.arange(0.5, 1.2, 0.001)
+smooth_nt = spl_nt(beta_plot_grid)
+smooth_tp = spl_tp(beta_plot_grid)
+
+plt.figure(figsize=(7,7))
+plt.fill_between(beta_plot_grid, 0, smooth_nt, color = 'black', alpha = 0.1)
+plt.plot(beta_plot_grid, smooth_nt, label = "Not considering Temptation")
+plt.fill_between(beta_plot_grid, 0, smooth_tp, color = 'black', alpha = 0.1)
+plt.plot(beta_plot_grid, smooth_tp, label = "Considering Temptation")
+plt.ylabel('Mass of agents')
+plt.xlabel(r'Implied $\beta$')
+plt.vlines(0.945,0,np.max(np.concatenate((smooth_nt,smooth_tp))), colors= 'black', linestyle = '--', label = r'True $\beta$ = 0.945')
+plt.legend(loc = "upper left")
+plt.show()

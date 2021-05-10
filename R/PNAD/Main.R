@@ -493,6 +493,23 @@ ggplot(transitions_with_quantile)+
          height = 8,
          dpi = 600)
 
+ggplot(transitions_with_quantile)+
+  geom_density(aes(next_quantile, colour = current_quantile, fill = current_quantile), kernel = "gaussian", adjust = 5, alpha = 0.1, outline.type = "both", trim = TRUE)+
+  facet_wrap(~current_quantile, labeller = labeller(current_quantile = quant.lab), ncol = 7) +
+  geom_vline(data = quantile_points, aes(xintercept = x_vline), linetype = "dashed") +
+  labs(title = glue("Disposable income per capita one-year transition - Average 25-65 y.o. family heads"),
+       subtitle = " PNADC 2012-2018 \n Facet label: Current Quantile",
+       x = "Next quantile",
+       y = "Density",
+       colour = "Current quantile",
+       fill = "Current quantile") +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks = seq(0,1,0.5)) +
+  ggsave(filename = glue("IncomeDistr7col.png"),
+         width = 11,
+         height = 6,
+         dpi = 600)
+
 # Compiling average # of household members by age and quantile
 
 members_by_quantile <- transitions_with_quantile %>%

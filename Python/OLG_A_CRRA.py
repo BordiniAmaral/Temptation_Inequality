@@ -63,6 +63,7 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
     print("Computing partial equilibrium age-specific solution...")
     # Defining value function space V(period, productivity, current asset)
     V = np.zeros(shape = (n, len(gridz), len(grida)))
+    dVnext = np.zeros(shape = (n, len(gridz), len(grida)))
     
     bound =  x0 + 1 # Bounding CRRA by evaluating only up to a close distance from minimum value
     x_bound = tpt.Newton(tpt.f,tpt.df,(x0 + 0.0001),1e-6,int(1e6), bound, xi, sigma_x, sigma_y, x0)
@@ -173,10 +174,16 @@ def partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, si
                         Aux[z1,a1,cut_index:] = -np.Inf
                     
                     V[period,z1,a1] = max(Aux[z1,a1,:])
-                    choice_a[period,z1,a1] = np.argmax(Aux[z1,a1,:])
+                    ac = np.argmax(Aux[z1,a1,:])
+                    choice_a[period,z1,a1] = int(ac)
+                    
+                    # Computing optimal d V_next / d a
+                    dVf = (V_next[z1,ac+1] - V_next[z1,ac]) / (grida[ac+1]-grida[ac])
+                    dVb = (V_next[z1,ac] - V_next[z1,ac-1]) / (grida[ac]-grida[ac-1])
+                    dVnext[period,z1,a1] = (dVf + dVb) / 2
 
     print("Backwards iteration concluded ")
-    return V, choice_a, U, T
+    return V, choice_a, U, T, dVnext
 
 @njit
 def aggregate_capital(grida, distr_mass, gridz, n):
@@ -248,7 +255,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     # Testing lower r (and updating upper r when appropriate)
     while not adequate_r:
         print("\nTesting r:",init_r[0])
-        KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[0], mass_z, transfer, A, temptation, x0, inv_cost)
+        KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T, dVnext = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[0], mass_z, transfer, A, temptation, x0, inv_cost)
         
         L_total = zsum / w # zsum is total salary mass considering the ranges in POF
         KLs = k_total / L_total
@@ -278,7 +285,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
         adequate_r = False
         while not adequate_r:
             print("\nTesting r:",init_r[1])
-            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[1], mass_z, transfer, A, temptation, x0, inv_cost)
+            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T, dVnext = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, init_r[1], mass_z, transfer, A, temptation, x0, inv_cost)
             
             L_total = zsum / w # zsum is total salary mass considering the ranges in POF
             KLs = k_total / L_total
@@ -309,7 +316,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
             
             r = (r_high + r_low)/2 
          
-            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost)
+            KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T, dVnext = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost)
             
             L_total = zsum / w
             KLs = k_total / L_total
@@ -334,7 +341,7 @@ def general_equilibrium(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_
     else:
         return None
     
-    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, r, init_r, U, T
+    return KLd, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, r, init_r, U, T, dVnext
 
 @njit
 def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost):
@@ -349,7 +356,7 @@ def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, m
     C, x, y = tpt.create_allocation_grid_by_age(grida, gridz_new, xi, sigma_x, sigma_y, w, r, n, transfer, x0, inv_cost)
     
     # Solving lifecycle
-    V, choice_a, U, T = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
+    V, choice_a, U, T, dVnext = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
     
     # Aggregating capital and consumption
     distr_mass = stationary_distribution(choice_a, grida, gridz_new, mass_z, Pi, n)
@@ -370,7 +377,7 @@ def run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, m
                 U_opt[period,z1,a1] = U[z1,a1,int(choice_a[period,z1,a1]),period]
                 T_opt[period,z1,a1] = T[z1,a1,int(choice_a[period,z1,a1]),period]
     
-    return KL, w, C, x_opt, y_opt, V, choice_a, distr_mass, k_mass, k_total, c_opt, U_opt, T_opt
+    return KL, w, C, x_opt, y_opt, V, choice_a, distr_mass, k_mass, k_total, c_opt, U_opt, T_opt, dVnext
 
 def calculate_wealth_gini(n, grida, gridz, distr_mass, k_mass):
     
@@ -417,7 +424,7 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
     # Testing beta0
     while not beta_low_found:
         
-        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T = run_once(n, beta0, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost)
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T, dVnext = run_once(n, beta0, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost)
         error = (k_total - k_target) / k_target
         
         if error < 0:
@@ -439,7 +446,7 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
             beta = (beta_high + beta_low)/2
         print("\n** Starting iteration ",count,"of capital matching**\n     Current guess:",beta)
         
-        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost)
+        KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, U, T, dVnext = run_once(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sigma_y, xi, r, mass_z, transfer, A, temptation, x0, inv_cost)
         
         error = (k_total - k_target) / k_target
         
@@ -463,7 +470,7 @@ def ge_match_by_capital(beta0, step, tol, k_target, n, delta, alpha, Pi, gridz, 
             print("\n\n**Bissection concluded**\nBeta = ",np.round(beta,3),"\nError = ",np.round(error,6))
         count = count + 1
     
-    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, r, U, T)
+    results = (KL, w, C, x, y, V, choice_a, distr_mass, k_mass, k_total, c_opt, r, U, T, dVnext)
     
     return beta, results
             
@@ -484,7 +491,7 @@ def compute_k_supply_curve(n, beta, delta, alpha, Pi, gridz, grida, sigma_x, sig
         C, x, y = tpt.create_allocation_grid_by_age(grida, gridz_new, xi, sigma_x, sigma_y, w, grid_r[r], n, transfer, x0, inv_cost)
         
         # Solving lifecycle
-        V, choice_a, U, T = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
+        V, choice_a, U, T, dVnext = partial_sol_age_specific(n, beta, alpha, Pi, gridz, grida, x, y, sigma_x, sigma_y, xi, x0, temptation)
         
         # Aggregating capital and consumption
         distr_mass = stationary_distribution(choice_a, grida, gridz_new, mass_z, Pi, n)

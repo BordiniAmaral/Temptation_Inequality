@@ -116,8 +116,8 @@ if(trim_outliers){
 #   Running regressions (Cases A,C), inserting GMM result (Case B)
 #-----------------------------------------------------------------------
 
-# Default external sigma_x (from Fajardo et al. (2012))
-sigma_x <- 2.12
+# Default external sigma_x (from Araujo (2005))
+sigma_x <- 2.17
 
 #--------------------------- Case A ------------------------------------
 
@@ -212,7 +212,7 @@ testeC <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
 # Removing the 'settings' object
 rm(settings)
 
-# Comparative graph for tempt frac
+# Comparative graphs for tempt frac
 ggplot() +
   geom_line(data = testeA, aes(x = total/12, y = tempt_frac, color = "(A)"), linetype = "dashed", size = 1.2) +
   geom_line(data = testeB, aes(x = total/12, y = tempt_frac, color = "(B)"), linetype = "dashed", size = 1.2) +
@@ -237,6 +237,31 @@ ggplot() +
         axis.title=element_text(size=14)) +
   guides(color=guide_legend(override.aes=list(fill=NA))) +
   ggsave(glue("Calibrations_ABC_Tempt_frac96.png"), width = 10, height = 6.5)
+
+ggplot() +
+  geom_line(data = testeA, aes(x = total/12, y = tempt_frac, color = "(A)"), linetype = "dashed", size = 1.2) +
+  geom_line(data = testeB, aes(x = total/12, y = tempt_frac, color = "(B)"), linetype = "dashed", size = 1.2) +
+  geom_line(data = testeC, aes(x = total/12, y = tempt_frac, color = "(C)"), linetype = "dashed", size = 1.2) +
+  geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac, color = "Data")) +
+  # geom_vline(xintercept = gridm_v, linetype = "dashed", linesize = 0.5) +
+  coord_cartesian(xlim = c(0,15000), ylim = c(0, 0.12)) +
+  scale_color_manual(values = c(
+    'Data' = 'blue',
+    '(A)' = 'black',
+    '(B)' = 'red',
+    '(C)' = 'yellow')) +
+  labs(color = '') +
+  labs(title = "Calibrated Curves",
+       subtitle = "POF 2017 - 2018 (per-capita)",
+       x = "Monthly expenditure per capita [R$]",
+       y = "Fraction spent on temptation") +
+  theme_minimal() +
+  theme(legend.text = element_text(size = 16),
+        legend.key.size = unit(1.5,"cm"),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14)) +
+  guides(color=guide_legend(override.aes=list(fill=NA))) +
+  ggsave(glue("Calibrations_ABC_Tempt_frac.png"), width = 10, height = 6.5)
 
 # Comparative graph for log(tempt) vs log(non-tempt)
 
@@ -291,15 +316,21 @@ avg_tempt <- temptation_cross %>%
 
 x_points <- seq(0,240000,100) # DEFINE X-AXIS RANGE
 
-settings <- list(x0 = 75*12,
+settings <- list(x0 = 0,
                  gamma1 = -2.2,
                  gamma2 = 0.96) # INSERT VALUES HERE
 
+settings2 <- list(x0 = 0,
+                 gamma1 = -2,
+                 gamma2 = 0.97) # INSERT VALUES HERE
+
 teste <- pmap(settings, y_sim_gamma, x = x_points) %>% bind_rows()
+teste2 <- pmap(settings2, y_sim_gamma, x = x_points) %>% bind_rows()
 
 ggplot() +
   geom_line(data = teste, aes(x = total/12, y = tempt_frac, colour = factor(x0))) +
-  geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac)) +
+  geom_line(data = teste2, aes(x = total/12, y = tempt_frac, colour = factor(x0))) +
+  #geom_smooth(data = temptation_filtered, aes(x = total_monthly_pc, y = tempt_frac)) +
   coord_cartesian(xlim = c(0,3000), ylim = c(0, 0.1))
 
 ggplot() +
