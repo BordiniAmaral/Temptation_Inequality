@@ -53,7 +53,7 @@ This repository holds the files used for my Masters' thesis
 
   Main.py is the main file, calling all others
   
-  Calibration.py conducts a blunt force GMM calibration of parameters x0, gamma1 and gamma2
+  Calibration.py conducts a minimum distance estimation of parameters x0, gamma1 and gamma2
   
   Graphics.py executes some auxiliary calculations and plot resulting equilibrium stats
   
